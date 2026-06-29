@@ -1,11 +1,10 @@
 #pragma once
 
+#include <QElapsedTimer>
 #include <QHash>
 #include <QMainWindow>
 #include <QString>
-#include <QWidget>
 #include <QTimer>
-#include <QElapsedTimer>
 
 class QLineEdit;
 class QPlainTextEdit;
@@ -13,6 +12,8 @@ class QPushButton;
 class QSpinBox;
 class QLabel;
 class QTreeView;
+class QTabWidget;
+class QCloseEvent;
 
 namespace tftp {
 class TftpServer;
@@ -22,13 +23,16 @@ class TftpClient;
 namespace tftp::gui {
 
 class TransferModel;
+class ThemeController;
 
 /**
  * @brief The AetherTFTP main application window.
  *
- * Hosts the embedded server controls, the client put/get controls, a
- * Model/View transfer list with per-row progress bars, and a log panel.
- * Supports drag-and-drop upload of local files. Transfers run on the GUI
+ * A tabbed control surface: a **Client** tab (transfer controls + the live
+ * transfer list with per-row cancel), a **Server** tab (embedded server
+ * controls + activity log), and a **Dashboard** tab (metric cards). Transient
+ * feedback goes to the status bar; the colour theme follows the OS (View →
+ * Theme to override). Supports drag-and-drop upload. Transfers run on the GUI
  * thread's event loop — the core engine is fully asynchronous (no blocking).
  */
 class MainWindow : public QMainWindow {
@@ -44,19 +48,26 @@ public:
 protected:
     void dragEnterEvent(QDragEnterEvent *event) override;
     void dropEvent(QDropEvent *event) override;
+    void closeEvent(QCloseEvent *event) override;
 
 private slots:
-    void toggleServer();     ///< Start or stop the embedded server.
-    void configureServer();  ///< Open the server settings dialog.
-    void browseLocalFile();  ///< Pick a local file for the client controls.
-    void startDownload();    ///< Begin a download using the client controls.
-    void startUpload();      ///< Begin an upload using the client controls.
+    void toggleServer();           ///< Start or stop the embedded server.
+    void configureServer();        ///< Open the server settings dialog.
+    void browseLocalFile();        ///< Pick a local file for the client controls.
+    void startDownload();          ///< Begin a download using the client controls.
+    void startUpload();            ///< Begin an upload using the client controls.
+    void cancelTransfer(int row);  ///< Abort the transfer shown at @p row.
+    void clearCompleted();         ///< Remove finished rows from the list.
 
 private:
-    QWidget *buildServerGroup();
-    QWidget *buildClientGroup();
-    QWidget *buildMetricsGroup();
+    QWidget *buildClientTab();
+    QWidget *buildServerTab();
+    QWidget *buildDashboardTab();
+    QWidget *makeMetricCard(const QString &caption, QLabel **valueOut);
+    void buildMenus();
+
     void appendLog(const QString &message);
+    void showStatus(const QString &message);
     void updateMetrics();
 
     /**
@@ -71,6 +82,9 @@ private:
 
     /** @return Number of transfers still in progress. */
     int activeTransfers() const;
+
+    void loadSettings();
+    void saveSettings();
 
     // Server state.
     TftpServer *m_server = nullptr;
@@ -87,24 +101,33 @@ private:
     QLineEdit *m_hostEdit = nullptr;
     QSpinBox *m_clientPortSpin = nullptr;
     QLineEdit *m_fileEdit = nullptr;
+    QSpinBox *m_blockSizeSpin = nullptr;
+    QSpinBox *m_timeoutSpin = nullptr;
 
-    // Metrics controls.
-    QLabel *m_metricsActiveLabel = nullptr;
-    QLabel *m_metricsBytesLabel = nullptr;
-    QLabel *m_metricsTransfersLabel = nullptr;
-    QLabel *m_metricsRetransLabel = nullptr;
-    QLabel *m_metricsSpeedLabel = nullptr;
+    // Dashboard metric value labels.
+    QLabel *m_metricActive = nullptr;
+    QLabel *m_metricBytes = nullptr;
+    QLabel *m_metricTransfers = nullptr;
+    QLabel *m_metricRetrans = nullptr;
+    QLabel *m_metricSpeed = nullptr;
     QTimer *m_metricsTimer = nullptr;
     qint64 m_lastTotalBytes = 0;
     QElapsedTimer m_metricsSpeedTimer;
 
-    // Transfer list + log.
+    // Views.
+    QTabWidget *m_tabs = nullptr;
     TransferModel *m_model = nullptr;
     QTreeView *m_view = nullptr;
     QPlainTextEdit *m_log = nullptr;
 
-    // Active client : its transfer row and last error message.
-    QHash<TftpClient *, int> m_rowOf;
+    // Theme.
+    ThemeController *m_theme = nullptr;
+
+    // Active-transfer bookkeeping. The id is stable across row removals, so it
+    // survives "Clear Completed" (which shifts row indices).
+    quint64 m_nextId = 1;
+    QHash<TftpClient *, quint64> m_idOf;
+    QHash<quint64, TftpClient *> m_clientById;
     QHash<TftpClient *, QString> m_lastError;
 };
 

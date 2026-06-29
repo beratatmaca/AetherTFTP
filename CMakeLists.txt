@@ -76,6 +76,8 @@ add_library(aether_gui STATIC
     src/gui/transfer_model.h
     src/gui/server_config_dialog.cpp
     src/gui/server_config_dialog.h
+    src/gui/theme_controller.cpp
+    src/gui/theme_controller.h
     src/gui/mainwindow.cpp
     src/gui/mainwindow.h
     src/gui/resources.qrc

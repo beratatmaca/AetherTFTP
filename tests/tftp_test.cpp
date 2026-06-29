@@ -52,6 +52,7 @@ private slots:
     void testPrometheusExporter();
     void testMetricsExporterHardening();
     void testCliRunnerUploadDownload();
+    void testTransferAbort();
     void testAgainstTftpHpa();
 
 private:
@@ -688,6 +689,29 @@ void TFTPProtocolTest::testCliRunnerUploadDownload() {
     QCOMPARE(serverResult, 0);
 }
 
+void TFTPProtocolTest::testTransferAbort() {
+    // Point at a port with no live server so begin() succeeds (it binds a
+    // local socket and creates the destination file) without any peer session
+    // being spawned — keeps the test deterministic and side-effect free.
+    TftpClient client;
+    const QString outPath = m_clientDir.path() + QStringLiteral("/aborted.out");
+    QSignalSpy finishedSpy(&client, &TftpClient::transferFinished);
+
+    client.downloadFile(QStringLiteral("127.0.0.1"), quint16(1), QStringLiteral("nothing.bin"), outPath);
+    QVERIFY(client.isRunning());
+    QVERIFY(QFile::exists(outPath));  // created (empty) when the file is opened.
+
+    client.abort();
+    QCOMPARE(finishedSpy.count(), 1);
+    QCOMPARE(finishedSpy.takeFirst().at(0).toBool(), false);
+    QVERIFY(!client.isRunning());
+    QVERIFY(!QFile::exists(outPath));  // partial download discarded.
+
+    // Aborting again is a harmless no-op.
+    client.abort();
+    QCOMPARE(finishedSpy.count(), 0);
+}
+
 void TFTPProtocolTest::testAgainstTftpHpa() {
     QString tftpBin = QStandardPaths::findExecutable(QStringLiteral("tftp"));
     if (tftpBin.isEmpty()) {
@@ -720,10 +744,11 @@ void TFTPProtocolTest::testAgainstTftpHpa() {
     // 4. Run external tftp-hpa client to download
     QProcess downloadProcess;
     downloadProcess.setWorkingDirectory(clientDir.path());
-    downloadProcess.start(tftpBin, {QStringLiteral("127.0.0.1"), QStringLiteral("12349"), QStringLiteral("-m"), QStringLiteral("binary"),
-                                    QStringLiteral("-c"), QStringLiteral("get tftp_hpa_down.txt")});
+    downloadProcess.start(tftpBin, {QStringLiteral("-m"), QStringLiteral("binary"), QStringLiteral("-c"),
+                                    QStringLiteral("get tftp_hpa_down.txt"), QStringLiteral("127.0.0.1"), QStringLiteral("12349")});
     QVERIFY(downloadProcess.waitForFinished(5000));
-    QCOMPARE(downloadProcess.exitCode(), 0);
+    QByteArray downloadErrors = downloadProcess.readAllStandardError() + "\n" + downloadProcess.readAllStandardOutput();
+    QVERIFY2(downloadProcess.exitCode() == 0, downloadErrors.constData());
 
     // Verify downloaded file content
     QFile downloadedFile(clientDir.filePath(QStringLiteral("tftp_hpa_down.txt")));
@@ -734,10 +759,11 @@ void TFTPProtocolTest::testAgainstTftpHpa() {
     // 5. Run external tftp-hpa client to upload
     QProcess uploadProcess;
     uploadProcess.setWorkingDirectory(clientDir.path());
-    uploadProcess.start(tftpBin, {QStringLiteral("127.0.0.1"), QStringLiteral("12349"), QStringLiteral("-m"), QStringLiteral("binary"),
-                                  QStringLiteral("-c"), QStringLiteral("put tftp_hpa_up.txt")});
+    uploadProcess.start(tftpBin, {QStringLiteral("-m"), QStringLiteral("binary"), QStringLiteral("-c"),
+                                  QStringLiteral("put tftp_hpa_up.txt"), QStringLiteral("127.0.0.1"), QStringLiteral("12349")});
     QVERIFY(uploadProcess.waitForFinished(5000));
-    QCOMPARE(uploadProcess.exitCode(), 0);
+    QByteArray uploadErrors = uploadProcess.readAllStandardError() + "\n" + uploadProcess.readAllStandardOutput();
+    QVERIFY2(uploadProcess.exitCode() == 0, uploadErrors.constData());
 
     // Verify uploaded file content
     QFile uploadedFile(serverDir.filePath(QStringLiteral("tftp_hpa_up.txt")));

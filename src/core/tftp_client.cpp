@@ -280,6 +280,30 @@ void TftpClient::onTimeout() {
     }
 }
 
+void TftpClient::abort() {
+    if (!m_running)
+        return;
+
+    // Courtesy-notify the peer so it can release its session (RFC 1350).
+    if (m_socket && m_tidLocked) {
+        const QByteArray err = buildError(ErrorCode::NotDefined, QStringLiteral("Transfer cancelled by user"));
+        m_socket->writeDatagram(err, m_serverAddr, m_serverPort);
+    }
+
+    m_running = false;
+    if (m_timer)
+        m_timer->stop();
+
+    const bool wasDownload = (m_mode == Mode::Download);
+    if (m_file && m_file->isOpen())
+        m_file->close();
+    // A cancelled download leaves a partial file; discard it.
+    if (wasDownload && !m_localPath.isEmpty())
+        QFile::remove(m_localPath);
+
+    emit transferFinished(false);
+}
+
 void TftpClient::fail(const QString &message) {
     if (!m_running && m_mode == Mode::Idle) {
         // Pre-start failure (e.g. bad args) — still surface it.

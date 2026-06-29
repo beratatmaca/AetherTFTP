@@ -1,7 +1,8 @@
 <!DOCTYPE RCC>
 <RCC version="1.0">
     <qresource prefix="/aether">
-        <file>theme.qss</file>
+        <file>theme-dark.qss</file>
+        <file>theme-light.qss</file>
         <file alias="icon.ico">../../assets/icon.ico</file>
     </qresource>
 </RCC>

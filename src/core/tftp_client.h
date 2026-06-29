@@ -73,6 +73,15 @@ public:
     /** @return @c true while a transfer is in progress. */
     bool isRunning() const { return m_running; }
 
+    /**
+     * @brief Cancel the in-progress transfer, if any.
+     *
+     * Notifies the peer with an ERROR datagram (RFC 1350), tears down the
+     * socket/timer/file, discards a partially written download, and emits
+     * @ref transferFinished(false). A no-op when no transfer is running.
+     */
+    void abort();
+
 signals:
     /**
      * @brief Emitted exactly once when the transfer ends.

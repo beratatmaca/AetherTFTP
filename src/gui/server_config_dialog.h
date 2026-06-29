@@ -5,6 +5,8 @@
 
 class QLineEdit;
 class QSpinBox;
+class QLabel;
+class QPushButton;
 
 namespace tftp::gui {
 
@@ -37,11 +39,15 @@ public:
 private slots:
     /** @brief Open a directory picker for the root directory field. */
     void browseDir();
+    /** @brief Re-validate inputs and enable/disable OK accordingly. */
+    void validate();
 
 private:
     QSpinBox *m_portSpin = nullptr;
     QLineEdit *m_dirEdit = nullptr;
     QSpinBox *m_maxSpin = nullptr;
+    QPushButton *m_okButton = nullptr;
+    QLabel *m_hintLabel = nullptr;
 };
 
 }  // namespace tftp::gui
