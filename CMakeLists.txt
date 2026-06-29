@@ -110,9 +110,13 @@ elseif(WIN32)
     install(TARGETS aethertftp RUNTIME DESTINATION bin)
     
     # Locate windeployqt
-    find_program(WINDEPLOYQT_EXECUTABLE windeployqt
-        HINTS "${QT6_INSTALL_PREFIX}/bin" "${Qt6_DIR}/../../../bin"
-    )
+    if(TARGET Qt6::windeployqt)
+        get_target_property(WINDEPLOYQT_EXECUTABLE Qt6::windeployqt IMPORTED_LOCATION)
+    else()
+        find_program(WINDEPLOYQT_EXECUTABLE windeployqt
+            HINTS "${QT6_INSTALL_PREFIX}/bin" "${Qt6_DIR}/../../../bin"
+        )
+    endif()
     
     # Run windeployqt on the installed executable to bundle Qt dependencies
     install(CODE "

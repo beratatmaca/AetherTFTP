@@ -38,8 +38,8 @@ jobs:
       - name: Install Qt 6 SDK
         uses: jurplel/install-qt-action@v3
         with:
-          version: '6.6.*'
-          cache: true
+          version: '6.6.3'
+          cache: false
 
       # Linux Setup & Compilation
       - name: Install Linux Build Dependencies

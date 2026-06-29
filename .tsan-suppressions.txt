@@ -1,0 +1,13 @@
+# ThreadSanitizer suppressions for AetherTFTP.
+#
+# These suppress *third-party* races only — none are in AetherTFTP code.
+# On Linux, Qt's GLib-backed event dispatcher spawns gdbus/dconf worker threads,
+# and GLib/GIO use lock-free atomics that ThreadSanitizer cannot reason about,
+# producing false positives in libglib/libgio/libgobject. Suppress those so the
+# TSan job fails only on genuine races in our own code.
+called_from_lib:libglib-2.0
+called_from_lib:libgio-2.0
+called_from_lib:libgobject-2.0
+race:libglib-2.0
+race:libgio-2.0
+race:libgobject-2.0
