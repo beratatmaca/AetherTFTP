@@ -212,7 +212,7 @@ void TftpSession::sendPacketDeferred(const QByteArray &packet,
     }
     delayMs = qMax(sessionDelay, globalDelay);
 
-    if (delayMs > 0) {
+    if (delayMs > 0 && m_sendTimer) {
         m_pendingSendPacket = packet;
         m_pendingArmRetransmit = armRetrans;
         m_sendTimer->start(int(delayMs));
