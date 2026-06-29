@@ -51,7 +51,11 @@ jobs:
       - name: Configure CMake (Linux / macOS)
         if: matrix.os != 'windows-latest'
         run: |
-          cmake -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
+          if [ "${{ matrix.os }}" = "ubuntu-latest" ]; then
+            cmake -B build -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=ON -DBUILD_COVERAGE=ON
+          else
+            cmake -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
+          fi
 
       # Windows Setup & Compilation
       - name: Configure CMake (Windows)
@@ -67,6 +71,13 @@ jobs:
       - name: Run Unit Tests
         run: |
           ctest --test-dir build --output-on-failure -C Release
+
+      - name: Upload coverage reports to Codecov
+        if: matrix.os == 'ubuntu-latest'
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false
 
       # Linux Packaging via CPack
       - name: Generate DEB Package (Linux)
