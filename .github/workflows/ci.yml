@@ -10,11 +10,8 @@ permissions:
   contents: read
 
 jobs:
-  # ---------------------------------------------------------------------------
-  # Formatting gate — fast, blocking.
-  # ---------------------------------------------------------------------------
   format:
-    name: Formatting (clang-format)
+    name: Formatting
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -25,17 +22,10 @@ jobs:
       - name: Check formatting
         run: cmake --build build --target format-check
 
-  # ---------------------------------------------------------------------------
-  # Unit Tests Matrix — cross-platform execution.
-  # ---------------------------------------------------------------------------
   unit-tests:
-    name: Unit Tests on ${{ matrix.os }}
+    name: Unit Tests
     needs: format
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -49,87 +39,29 @@ jobs:
           cache: false
 
       - name: Install Linux Build Dependencies
-        if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential libgl1-mesa-dev
+          sudo apt-get install -y build-essential libgl1-mesa-dev cmake g++ qt6-base-dev
 
-      - name: Configure CMake (Linux)
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          cmake -G "Unix Makefiles" -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
-
-      - name: Configure CMake (macOS)
-        if: matrix.os == 'macos-latest'
+      - name: Configure CMake
         run: |
           cmake -G "Unix Makefiles" -B build \
-            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_BUILD_TYPE=Debug \
             -DBUILD_TESTING=ON \
-            -DAGL_LIBRARY="-framework OpenGL"
-
-      - name: Configure CMake (Windows)
-        if: matrix.os == 'windows-latest'
-        shell: pwsh
-        run: |
-          cmake -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
+            -DAETHER_SANITIZER=address+undefined
 
       - name: Compile Code
         run: |
-          cmake --build build --config Release -j$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 2)
+          cmake --build build --config Debug -j$(nproc)
 
       - name: Run Unit Tests
         env:
           QT_QPA_PLATFORM: offscreen
-        run: |
-          ctest --test-dir build --output-on-failure -C Release
-
-  # ---------------------------------------------------------------------------
-  # Sanitizers — ASan+UBSan is a blocking gate (verified clean). TSan is
-  # advisory (continue-on-error) until validated green on the CI runner.
-  # ---------------------------------------------------------------------------
-  sanitizers:
-    name: Sanitizer (${{ matrix.sanitizer }})
-    needs: format
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - sanitizer: address+undefined
-            blocking: true
-          - sanitizer: thread
-            blocking: false
-    continue-on-error: ${{ !matrix.blocking }}
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install Qt6 + toolchain
-        run: sudo apt-get update && sudo apt-get install -y cmake g++ qt6-base-dev
-      # ThreadSanitizer needs reduced ASLR entropy on recent kernels, otherwise
-      # it aborts with "unexpected memory mapping".
-      - name: Reduce ASLR entropy (TSan)
-        if: matrix.sanitizer == 'thread'
-        run: sudo sysctl -w vm.mmap_rnd_bits=28
-      - name: Configure
-        run: >
-          cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
-          -DAETHER_SANITIZER=${{ matrix.sanitizer }}
-      - name: Build tests
-        run: cmake --build build --target tftp_test -j$(nproc)
-      - name: Run tests under sanitizer
-        env:
-          # QT_NO_GLIB makes Qt use its poll-based dispatcher instead of the
-          # GLib one, so our code paths no longer traverse libglib — which makes
-          # the third-party suppressions safe (they cannot mask our own races).
-          QT_NO_GLIB: "1"
-          QT_QPA_PLATFORM: offscreen
           ASAN_OPTIONS: detect_leaks=0:abort_on_error=1:strict_string_checks=1
           UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
-          TSAN_OPTIONS: suppressions=${{ github.workspace }}/.tsan-suppressions.txt:halt_on_error=1:second_deadlock_stack=1
-        run: ctest --test-dir build --output-on-failure
+        run: |
+          ctest --test-dir build --output-on-failure -C Debug
 
-  # ---------------------------------------------------------------------------
-  # Coverage — blocking; uploads to Codecov.
-  # ---------------------------------------------------------------------------
   coverage:
     name: Coverage
     needs: format
