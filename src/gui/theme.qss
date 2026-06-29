@@ -1,0 +1,74 @@
+/*
+ * AetherTFTP brand accent theme.
+ *
+ * Styles accent elements (buttons, progress, group titles, status) using the
+ * brand palette while leaving base window/text surfaces to the system palette,
+ * so native OS dark/light modes still show through.
+ *
+ *   Deep Slate   #1E293B   structure
+ *   Electric Cyan #06B6D4  network activity / primary action
+ *   Mint Green   #10B981   transfer integrity / success
+ */
+
+QGroupBox {
+    font-weight: 600;
+    border: 1px solid palette(mid);
+    border-radius: 8px;
+    margin-top: 12px;
+    padding: 8px;
+}
+QGroupBox::title {
+    subcontrol-origin: margin;
+    left: 10px;
+    padding: 0 4px;
+    color: #06B6D4;
+}
+
+QPushButton {
+    border: 1px solid #06B6D4;
+    border-radius: 6px;
+    padding: 6px 14px;
+    color: #06B6D4;
+    background: transparent;
+}
+QPushButton:hover {
+    background: rgba(6, 182, 212, 0.12);
+}
+QPushButton:pressed {
+    background: rgba(6, 182, 212, 0.24);
+}
+
+QPushButton#primaryButton {
+    background: #06B6D4;
+    color: #06212B;
+    border: 1px solid #06B6D4;
+    font-weight: 600;
+}
+QPushButton#primaryButton:hover {
+    background: #22C4DC;
+}
+
+QLabel#statusRunning {
+    color: #10B981;
+    font-weight: 600;
+}
+QLabel#statusStopped {
+    color: palette(mid);
+    font-weight: 600;
+}
+
+QProgressBar {
+    border: 1px solid palette(mid);
+    border-radius: 4px;
+    text-align: center;
+}
+QProgressBar::chunk {
+    background-color: #10B981;
+    border-radius: 3px;
+}
+
+QPlainTextEdit#logPanel {
+    border: 1px solid palette(mid);
+    border-radius: 6px;
+    font-family: monospace;
+}
