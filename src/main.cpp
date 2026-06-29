@@ -3,6 +3,7 @@
 #include "gui/mainwindow.h"
 
 #include <QApplication>
+#include <QIcon>
 #include <QStringList>
 
 /**
@@ -33,6 +34,7 @@ int main(int argc, char *argv[]) {
         QApplication::setOrganizationName(QStringLiteral("AetherTFTP Project"));
         QApplication::setApplicationName(QStringLiteral("AetherTFTP"));
         QApplication::setApplicationVersion(QStringLiteral(AETHER_VERSION_STRING));
+        QApplication::setWindowIcon(QIcon(QStringLiteral(":/aether/icon.ico")));
 
         tftp::gui::MainWindow window;
         window.show();

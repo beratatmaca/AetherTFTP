@@ -6,8 +6,10 @@
 #include <QJsonObject>
 #include <QTcpSocket>
 
+#include <QEventLoop>
 #include <QProcess>
 #include <QStandardPaths>
+#include <QTimer>
 
 #include "core/tftp_client.h"
 #include "core/tftp_protocol.h"
@@ -723,6 +725,15 @@ void TFTPProtocolTest::testAgainstTftpHpa() {
     QVERIFY(serverDir.isValid());
     QVERIFY(clientDir.isValid());
 
+    auto waitForProcess = [](QProcess &proc, int timeoutMs) -> bool {
+        QEventLoop loop;
+        QObject::connect(&proc, &QProcess::finished, &loop, [&loop]() { loop.quit(); });
+        QTimer::singleShot(timeoutMs, &loop, &QEventLoop::quit);
+        if (proc.state() != QProcess::NotRunning)
+            loop.exec();
+        return proc.state() == QProcess::NotRunning;
+    };
+
     // 1. Start our in-process server
     TftpServer server;
     QVERIFY(server.listen(QHostAddress::LocalHost, 12349, serverDir.path()));
@@ -746,7 +757,7 @@ void TFTPProtocolTest::testAgainstTftpHpa() {
     downloadProcess.setWorkingDirectory(clientDir.path());
     downloadProcess.start(tftpBin, {QStringLiteral("-m"), QStringLiteral("binary"), QStringLiteral("-c"),
                                     QStringLiteral("get tftp_hpa_down.txt"), QStringLiteral("127.0.0.1"), QStringLiteral("12349")});
-    QVERIFY(downloadProcess.waitForFinished(5000));
+    QVERIFY2(waitForProcess(downloadProcess, 8000), "tftp-hpa download did not finish");
     QByteArray downloadErrors = downloadProcess.readAllStandardError() + "\n" + downloadProcess.readAllStandardOutput();
     QVERIFY2(downloadProcess.exitCode() == 0, downloadErrors.constData());
 
@@ -761,7 +772,7 @@ void TFTPProtocolTest::testAgainstTftpHpa() {
     uploadProcess.setWorkingDirectory(clientDir.path());
     uploadProcess.start(tftpBin, {QStringLiteral("-m"), QStringLiteral("binary"), QStringLiteral("-c"),
                                   QStringLiteral("put tftp_hpa_up.txt"), QStringLiteral("127.0.0.1"), QStringLiteral("12349")});
-    QVERIFY(uploadProcess.waitForFinished(5000));
+    QVERIFY2(waitForProcess(uploadProcess, 8000), "tftp-hpa upload did not finish");
     QByteArray uploadErrors = uploadProcess.readAllStandardError() + "\n" + uploadProcess.readAllStandardOutput();
     QVERIFY2(uploadProcess.exitCode() == 0, uploadErrors.constData());
 

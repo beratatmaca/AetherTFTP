@@ -211,10 +211,22 @@ jobs:
           name: AetherTFTP-Linux-Snap
           path: .
 
+      - name: Locate snap file
+        id: snap
+        # action-publish passes `snap:` straight to `snapcraft upload` and does
+        # not expand globs, so resolve the concrete file name here.
+        run: |
+          file=$(ls -1 ./*.snap 2>/dev/null | head -n1)
+          if [ -z "$file" ]; then
+            echo "No .snap artifact found to publish." >&2
+            exit 1
+          fi
+          echo "path=$file" >> "$GITHUB_OUTPUT"
+
       - name: Publish Snap
         uses: snapcore/action-publish@v1
         env:
           SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
         with:
-          snap: ./*.snap
+          snap: ${{ steps.snap.outputs.path }}
           release: ${{ needs.version.outputs.is_tag == 'true' && 'stable' || 'edge' }}
