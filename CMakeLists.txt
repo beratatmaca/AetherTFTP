@@ -108,7 +108,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     )
 elseif(WIN32)
     install(TARGETS aethertftp RUNTIME DESTINATION bin)
-    
+
     # Locate windeployqt
     if(TARGET Qt6::windeployqt)
         get_target_property(WINDEPLOYQT_EXECUTABLE Qt6::windeployqt IMPORTED_LOCATION)
@@ -117,7 +117,7 @@ elseif(WIN32)
             HINTS "${QT6_INSTALL_PREFIX}/bin" "${Qt6_DIR}/../../../bin"
         )
     endif()
-    
+
     # Run windeployqt on the installed executable to bundle Qt dependencies
     install(CODE "
         execute_process(COMMAND \"${WINDEPLOYQT_EXECUTABLE}\" --no-compiler-runtime \"\${CMAKE_INSTALL_PREFIX}/bin/aethertftp.exe\")
@@ -130,7 +130,7 @@ set(CPACK_PACKAGE_VERSION_MAJOR ${PROJECT_VERSION_MAJOR})
 set(CPACK_PACKAGE_VERSION_MINOR ${PROJECT_VERSION_MINOR})
 set(CPACK_PACKAGE_VERSION_PATCH ${PROJECT_VERSION_PATCH})
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Modern lightweight TFTP client and server")
-set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
+set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE.txt")
 
 # Debian packaging details
 set(CPACK_DEBIAN_PACKAGE_MAINTAINER "AetherTFTP Maintainers <maintainers@aethertftp.example>")
@@ -140,8 +140,6 @@ set(CPACK_DEBIAN_PACKAGE_DEPENDS "libc6, libqt6core6, libqt6network6, libqt6widg
 
 # WiX Windows Installer details
 set(CPACK_WIX_UPGRADE_GUID "D9C5F2A8-A29F-4D2A-B9C0-8B94F3C8F3A2")
-set(CPACK_WIX_PRODUCT_ICON "${CMAKE_CURRENT_SOURCE_DIR}/assets/icon.ico") # placeholder or fallback in wix if exists
+set(CPACK_WIX_PRODUCT_ICON "${CMAKE_CURRENT_SOURCE_DIR}/assets/icon.ico")
 
 include(CPack)
-
-
