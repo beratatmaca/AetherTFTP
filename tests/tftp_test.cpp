@@ -352,7 +352,13 @@ void TFTPProtocolTest::testSymlinkPathTraversal() {
     // Create a symlink inside the server root pointing to the outside file.
     QString symlinkPath =
         m_serverDir.path() + QStringLiteral("/link_to_secret.txt");
+#ifdef Q_OS_WIN
+    if (!QFile::link(outsideFile.fileName(), symlinkPath)) {
+        QSKIP("Symlink creation is not permitted or supported on this Windows host (requires developer mode / admin privileges).");
+    }
+#else
     QVERIFY(QFile::link(outsideFile.fileName(), symlinkPath));
+#endif
 
     // A download request for the symlink name should be rejected by path
     // traversal protection.
