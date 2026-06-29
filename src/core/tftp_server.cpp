@@ -197,9 +197,6 @@ void TftpServer::onReadyRead() {
         quint16 senderPort = 0;
         m_socket->readDatagram(buf.data(), buf.size(), &sender, &senderPort);
 
-        // Single-port multiplexing routing using endpoint string. A session
-        // registered in m_sessions has no socket of its own, so its datagrams
-        // must always be routed here.
         const QString key =
             sender.toString() + QLatin1Char(':') + QString::number(senderPort);
         if (m_sessions.contains(key)) {
@@ -209,7 +206,6 @@ void TftpServer::onReadyRead() {
 
         Request req;
         if (!parseRequest(buf, req)) {
-            // Not a request on the main socket — ignore (could be a stray).
             continue;
         }
 
@@ -259,10 +255,6 @@ void TftpServer::onReadyRead() {
                 } else {
                     ++m_transfersFailure;
                 }
-                // Unconditional: removes the routing entry if present (a
-                // single-port session) and is a harmless no-op otherwise.
-                // Guarding on the flag could strand a dangling pointer if the
-                // mode was toggled off while the session was in flight.
                 m_sessions.remove(key);
                 emit transferFinished(fname, ok, msg);
 
@@ -305,18 +297,15 @@ qint64 TftpServer::requestGlobalDelay(qint64 packetSize) {
     if (m_globalTokens >= packetSizeDouble) {
         m_globalTokens -= packetSizeDouble;
         return 0;
-    } else {
-        double needed = packetSizeDouble - m_globalTokens;
-        qint64 delayMs =
-            qint64(std::ceil(needed * 1000.0 / double(m_globalLimit)));
-        m_globalTokens -= packetSizeDouble;
-        return delayMs;
     }
+    double needed = packetSizeDouble - m_globalTokens;
+    auto delayMs = qint64(std::ceil(needed * 1000.0 / double(m_globalLimit)));
+    m_globalTokens -= packetSizeDouble;
+    return delayMs;
 }
 
-void TftpServer::logEvent(const QString &eventType,
-                          const QString &sessionIdentifier,
-                          const QString &clientAddress, const QString &fileName,
+void TftpServer::logEvent(const QString &eventType, const QString &sessionId,
+                          const QString &clientIp, const QString &fileName,
                           int blockCount, const QString &status,
                           const QString &message) {
     if (m_jsonLoggingEnabled) {
@@ -324,8 +313,8 @@ void TftpServer::logEvent(const QString &eventType,
         obj.insert(QStringLiteral("timestamp"),
                    QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs));
         obj.insert(QStringLiteral("event_type"), eventType);
-        obj.insert(QStringLiteral("session_id"), sessionIdentifier);
-        obj.insert(QStringLiteral("client_ip"), clientAddress);
+        obj.insert(QStringLiteral("session_id"), sessionId);
+        obj.insert(QStringLiteral("client_ip"), clientIp);
         obj.insert(QStringLiteral("file_name"), fileName);
         obj.insert(QStringLiteral("block_count"), blockCount);
         obj.insert(QStringLiteral("status"), status);
@@ -340,7 +329,7 @@ void TftpServer::logEvent(const QString &eventType,
         } else if (eventType == QLatin1String("transfer_rejected")) {
             if (message.contains(QLatin1String("ACL"))) {
                 emit logMessage(QStringLiteral("Rejected by ACL: %1 from %2")
-                                    .arg(fileName, clientAddress));
+                                    .arg(fileName, clientIp));
             } else {
                 emit logMessage(
                     QStringLiteral("Rejected unsafe path: %1").arg(fileName));

@@ -81,7 +81,7 @@ if(DOXYGEN_FOUND)
 
     doxygen_add_docs(docs
         "${CMAKE_SOURCE_DIR}/src"
-        COMMENT "Generating API documentation with Doxygen → ${CMAKE_BINARY_DIR}/docs/html")
+        COMMENT "Generating API documentation with Doxygen: ${CMAKE_BINARY_DIR}/docs/html")
 else()
     message(STATUS "Doxygen not found — 'docs' target disabled")
 endif()

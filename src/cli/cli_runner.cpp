@@ -33,7 +33,7 @@ bool CliRunner::wantsGui(const QStringList &args) {
     // (--server / --get / --put / --help / …) run headless in CLI mode.
     if (args.contains(QStringLiteral("--gui")))
         return true;
-    return args.size() <= 1;  // program name only → no arguments supplied.
+    return args.size() <= 1;  // program name only : no arguments supplied.
 }
 
 int CliRunner::run(QCoreApplication &app) {

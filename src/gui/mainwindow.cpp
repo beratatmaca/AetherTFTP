@@ -285,7 +285,7 @@ void MainWindow::startTransfer(bool isUpload, const QString &host, quint16 port,
                 client->deleteLater();
             });
 
-    appendLog(QStringLiteral("%1 %2 → %3")
+    appendLog(QStringLiteral("%1 %2 : %3")
                   .arg(isUpload ? QStringLiteral("Uploading")
                                 : QStringLiteral("Downloading"),
                        remoteName, peer));

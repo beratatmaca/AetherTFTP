@@ -10,10 +10,10 @@
  * @brief AetherTFTP entry point and CLI/GUI launch dispatch.
  *
  * Dispatch rule:
- *   - No arguments            → launch the Qt6 GUI (QApplication).
- *   - Action args (--server/  → run headless in CLI mode (QCoreApplication).
+ *   - No arguments            : launch the Qt6 GUI (QApplication).
+ *   - Action args (--server/  : run headless in CLI mode (QCoreApplication).
  *     --get/--put/--help/…)
- *   - Explicit --gui          → force the GUI regardless of other arguments.
+ *   - Explicit --gui          : force the GUI regardless of other arguments.
  */
 
 namespace {

@@ -104,7 +104,7 @@ private:
     QTreeView *m_view = nullptr;
     QPlainTextEdit *m_log = nullptr;
 
-    // Active client → its transfer row and last error message.
+    // Active client : its transfer row and last error message.
     QHash<TftpClient *, int> m_rowOf;
     QHash<TftpClient *, QString> m_lastError;
 };

@@ -6,26 +6,28 @@
 [![C++17](https://img.shields.io/badge/C++-17-blue.svg?logo=c%2B%2B)](https://en.cppreference.com/w/cpp/compiler_support/17)
 [![Qt 6](https://img.shields.io/badge/Qt-6-green.svg?logo=qt)](https://www.qt.io/)
 
-AetherTFTP is a modern, lightweight, open-source cross-platform TFTP (Trivial File Transfer Protocol) client and server application. Written in C++17 and utilizing the Qt 6 framework, it is designed for speed, reliability, and high-block-size network throughput while providing both a headless Command Line Interface (CLI) and an intuitive Graphical User Interface (GUI).
+AetherTFTP is a modern, lightweight, open-source cross-platform TFTP (Trivial File Transfer Protocol) client and server application.
+
+Written in C++17 and utilizing the Qt 6 framework, it is designed for speed, reliability, and high-block-size network throughput while providing both a headless Command Line Interface (CLI) and an intuitive Graphical User Interface (GUI).
 
 ## Technical Architecture
 
 The architecture separates the core protocol logic from the presentation layer, allowing the engine to be compiled as a static library with zero graphical dependencies.
 
 ```text
-                  ┌─────────────────────────────┐
-                  │      Core TFTP Engine        │
+                  ┌──────────────────────────────────┐
+                  │      Core TFTP Engine            │
                   │  (RFC 1350 / 2347 / 2348 / 2349) │
-                  └──────────────┬──────────────┘
+                  └──────────────┬───────────────────┘
                                  │
                ┌─────────────────┴─────────────────┐
                │                                   │
                ▼                                   ▼
- ┌─────────────────────────┐       ┌─────────────────────────┐
+ ┌──────────────────────────┐       ┌──────────────────────────┐
  │      CLI Interface       │       │     Qt6 GUI Interface    │
  │  (QCoreApplication)      │       │  (QApplication)          │
  │  QCommandLineParser      │       │  QThread + QTreeView     │
- └─────────────────────────┘       └─────────────────────────┘
+ └──────────────────────────┘       └──────────────────────────┘
 ```
 
 - **`tftp_protocol`**: A pure data serialization and deserialization layer, operating independently of sockets and threads.
@@ -50,7 +52,7 @@ To compile the project:
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-org/AetherTFTP.git
+git clone https://github.com/beratatmaca/AetherTFTP.git
 cd AetherTFTP
 
 # Configure and compile (Release mode)

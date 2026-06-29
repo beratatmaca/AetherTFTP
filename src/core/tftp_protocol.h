@@ -20,7 +20,7 @@
 namespace tftp {
 
 /** @brief TFTP opcodes (RFC 1350 §5; OACK from RFC 2347). */
-enum class OpCode : quint16 {
+enum class OpCode : quint8 {
     RRQ = 1,    ///< Read request.
     WRQ = 2,    ///< Write request.
     DATA = 3,   ///< Data block.
@@ -30,7 +30,7 @@ enum class OpCode : quint16 {
 };
 
 /** @brief TFTP error codes (RFC 1350 §5; OptionRefused from RFC 2347). */
-enum class ErrorCode : quint16 {
+enum class ErrorCode : quint8 {
     NotDefined = 0,  ///< Not defined; see the error message (if any).
     FileNotFound = 1,
     AccessViolation = 2,
@@ -75,7 +75,7 @@ struct Request {
     Options options;          ///< Negotiated options (may be empty).
 };
 
-/// @name Serialisation (structure → wire datagram)
+/// @name Serialisation (structure : wire datagram)
 /// @{
 
 /**
@@ -120,7 +120,7 @@ QByteArray buildError(ErrorCode code, const QString &message);
 QByteArray buildOack(const Options &options);
 
 /// @}
-/// @name Parsing (wire datagram → structure)
+/// @name Parsing (wire datagram : structure)
 /// @{
 
 /**
