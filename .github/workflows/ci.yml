@@ -83,7 +83,7 @@ jobs:
           lcov --capture --directory build --output-file coverage.info \
                --ignore-errors mismatch,gcov,source
           lcov --remove coverage.info '/usr/*' '*/build/*' '*/tests/*' \
-               '*_autogen/*' --output-file coverage.info
+               '*_autogen/*' --output-file coverage.info --ignore-errors unused
           lcov --list coverage.info
       - name: Upload to Codecov
         uses: codecov/codecov-action@v4
