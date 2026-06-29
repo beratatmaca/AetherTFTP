@@ -6,9 +6,13 @@
 #include <QJsonObject>
 #include <QTcpSocket>
 
+#include <QProcess>
+#include <QStandardPaths>
+
 #include "core/tftp_client.h"
 #include "core/tftp_protocol.h"
 #include "core/tftp_server.h"
+#include "cli/cli_runner.h"
 
 using namespace tftp;
 
@@ -47,6 +51,8 @@ private slots:
     void testStructuredLogging();
     void testPrometheusExporter();
     void testMetricsExporterHardening();
+    void testCliRunnerUploadDownload();
+    void testAgainstTftpHpa();
 
 private:
     QByteArray makePayload(int size, char seed) const;
@@ -624,6 +630,122 @@ void TFTPProtocolTest::testMetricsExporterHardening() {
     QVERIFY(ok.contains(QStringLiteral("tftp_active_sessions")));
 
     m_server->stopMetricsServer();
+}
+
+void TFTPProtocolTest::testCliRunnerUploadDownload() {
+    QTemporaryDir cliServerDir;
+    QTemporaryDir cliClientDir;
+    QVERIFY(cliServerDir.isValid());
+    QVERIFY(cliClientDir.isValid());
+
+    // 1. Create file for download test
+    QByteArray downloadData = "Hello from CLI Server!";
+    QFile dFile(cliServerDir.filePath("server_file.txt"));
+    QVERIFY(dFile.open(QIODevice::WriteOnly));
+    dFile.write(downloadData);
+    dFile.close();
+
+    // 2. Create file for upload test
+    QByteArray uploadData = "Hello from CLI Client!";
+    QFile uFile(cliClientDir.filePath("client_file.txt"));
+    QVERIFY(uFile.open(QIODevice::WriteOnly));
+    uFile.write(uploadData);
+    uFile.close();
+
+    // Schedule the client operations and server shutdown
+    QTimer::singleShot(100, [&]() {
+        // Run get/download
+        QStringList getArgs = {"--get",           "--host",   "127.0.0.1",
+                               "--port",          "12347",    "--file",
+                               "server_file.txt", "--output", cliClientDir.filePath("server_file_downloaded.txt")};
+        int getResult = CliRunner::run(*qApp, getArgs);
+        QCOMPARE(getResult, 0);
+
+        // Verify downloaded file content
+        QFile downloadedFile(cliClientDir.filePath("server_file_downloaded.txt"));
+        QVERIFY(downloadedFile.open(QIODevice::ReadOnly));
+        QCOMPARE(downloadedFile.readAll(), downloadData);
+        downloadedFile.close();
+
+        // Run put/upload
+        QStringList putArgs = {"--put", "--host", "127.0.0.1", "--port", "12347", "--file", cliClientDir.filePath("client_file.txt")};
+        int putResult = CliRunner::run(*qApp, putArgs);
+        QCOMPARE(putResult, 0);
+
+        // Verify uploaded file content (should be in server dir with the remote name 'client_file.txt')
+        QFile uploadedFile(cliServerDir.filePath("client_file.txt"));
+        QVERIFY(uploadedFile.open(QIODevice::ReadOnly));
+        QCOMPARE(uploadedFile.readAll(), uploadData);
+        uploadedFile.close();
+
+        // Stop the server by exiting the main event loop
+        qApp->quit();
+    });
+
+    // Run the server command. This starts the server and runs QCoreApplication::exec()
+    QStringList serverArgs = {"--server", "--port", "12347", "--dir", cliServerDir.path(), "--bind", "127.0.0.1"};
+    int serverResult = CliRunner::run(*qApp, serverArgs);
+    QCOMPARE(serverResult, 0);
+}
+
+void TFTPProtocolTest::testAgainstTftpHpa() {
+    QString tftpBin = QStandardPaths::findExecutable(QStringLiteral("tftp"));
+    if (tftpBin.isEmpty()) {
+        QSKIP("tftp command-line tool not found, skipping integration test");
+    }
+
+    QTemporaryDir serverDir;
+    QTemporaryDir clientDir;
+    QVERIFY(serverDir.isValid());
+    QVERIFY(clientDir.isValid());
+
+    // 1. Start our in-process server
+    TftpServer server;
+    QVERIFY(server.listen(QHostAddress::LocalHost, 12349, serverDir.path()));
+
+    // 2. Prepare a file in the server directory to download
+    QByteArray downloadData = "Data for tftp-hpa client to download!";
+    QFile dFile(serverDir.filePath(QStringLiteral("tftp_hpa_down.txt")));
+    QVERIFY(dFile.open(QIODevice::WriteOnly));
+    dFile.write(downloadData);
+    dFile.close();
+
+    // 3. Prepare a file in the client directory to upload
+    QByteArray uploadData = "Data for tftp-hpa client to upload!";
+    QFile uFile(clientDir.filePath(QStringLiteral("tftp_hpa_up.txt")));
+    QVERIFY(uFile.open(QIODevice::WriteOnly));
+    uFile.write(uploadData);
+    uFile.close();
+
+    // 4. Run external tftp-hpa client to download
+    QProcess downloadProcess;
+    downloadProcess.setWorkingDirectory(clientDir.path());
+    downloadProcess.start(tftpBin, {QStringLiteral("127.0.0.1"), QStringLiteral("12349"), QStringLiteral("-m"), QStringLiteral("binary"),
+                                    QStringLiteral("-c"), QStringLiteral("get"), QStringLiteral("tftp_hpa_down.txt")});
+    QVERIFY(downloadProcess.waitForFinished(5000));
+    QCOMPARE(downloadProcess.exitCode(), 0);
+
+    // Verify downloaded file content
+    QFile downloadedFile(clientDir.filePath(QStringLiteral("tftp_hpa_down.txt")));
+    QVERIFY(downloadedFile.open(QIODevice::ReadOnly));
+    QCOMPARE(downloadedFile.readAll(), downloadData);
+    downloadedFile.close();
+
+    // 5. Run external tftp-hpa client to upload
+    QProcess uploadProcess;
+    uploadProcess.setWorkingDirectory(clientDir.path());
+    uploadProcess.start(tftpBin, {QStringLiteral("127.0.0.1"), QStringLiteral("12349"), QStringLiteral("-m"), QStringLiteral("binary"),
+                                  QStringLiteral("-c"), QStringLiteral("put"), QStringLiteral("tftp_hpa_up.txt")});
+    QVERIFY(uploadProcess.waitForFinished(5000));
+    QCOMPARE(uploadProcess.exitCode(), 0);
+
+    // Verify uploaded file content
+    QFile uploadedFile(serverDir.filePath(QStringLiteral("tftp_hpa_up.txt")));
+    QVERIFY(uploadedFile.open(QIODevice::ReadOnly));
+    QCOMPARE(uploadedFile.readAll(), uploadData);
+    uploadedFile.close();
+
+    server.close();
 }
 
 QTEST_MAIN(TFTPProtocolTest)

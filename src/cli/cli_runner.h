@@ -23,7 +23,7 @@ public:
      * @param app The application whose event loop is used for async transfers.
      * @return A process exit code (0 on success).
      */
-    static int run(QCoreApplication &app);
+    static int run(QCoreApplication &app, const QStringList &args = {});
 
     /**
      * @brief Detect whether the GUI was requested.

@@ -1,9 +1,16 @@
 cmake_minimum_required(VERSION 3.16)
 
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Version.cmake)
+
 project(AetherTFTP
-    VERSION 0.1.0
+    VERSION ${AETHER_VERSION}
     DESCRIPTION "Cross-platform TFTP GUI & CLI"
     LANGUAGES CXX)
+
+configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/cmake/version.h.in
+    ${CMAKE_BINARY_DIR}/generated/aether/version.h
+    @ONLY)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -53,7 +60,9 @@ add_library(aether_core STATIC
     src/core/tftp_client.h
 )
 target_link_libraries(aether_core PUBLIC Qt6::Core Qt6::Network)
-target_include_directories(aether_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_include_directories(aether_core PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${CMAKE_BINARY_DIR}/generated)
 
 add_library(aether_cli STATIC
     src/cli/cli_runner.cpp
@@ -85,7 +94,7 @@ if(BUILD_TESTING)
     find_package(Qt6 REQUIRED COMPONENTS Test)
     enable_testing()
     add_executable(tftp_test tests/tftp_test.cpp)
-    target_link_libraries(tftp_test PRIVATE aether_core Qt6::Core Qt6::Network Qt6::Test)
+    target_link_libraries(tftp_test PRIVATE aether_core aether_cli Qt6::Core Qt6::Network Qt6::Test)
     add_test(NAME tftp_test COMMAND tftp_test)
 endif()
 
@@ -129,6 +138,7 @@ set(CPACK_PACKAGE_VENDOR "AetherTFTP Project")
 set(CPACK_PACKAGE_VERSION_MAJOR ${PROJECT_VERSION_MAJOR})
 set(CPACK_PACKAGE_VERSION_MINOR ${PROJECT_VERSION_MINOR})
 set(CPACK_PACKAGE_VERSION_PATCH ${PROJECT_VERSION_PATCH})
+set(CPACK_PACKAGE_VERSION "${AETHER_VERSION}")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Modern lightweight TFTP client and server")
 set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE.txt")
 

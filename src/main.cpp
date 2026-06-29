@@ -1,3 +1,4 @@
+#include "aether/version.h"
 #include "cli/cli_runner.h"
 #include "gui/mainwindow.h"
 
@@ -38,7 +39,7 @@ int main(int argc, char *argv[]) {
     if (tftp::CliRunner::wantsGui(rawArgs)) {
         QApplication app(argc, argv);
         QApplication::setApplicationName(QStringLiteral("AetherTFTP"));
-        QApplication::setApplicationVersion(QStringLiteral("0.1.0"));
+        QApplication::setApplicationVersion(QStringLiteral(AETHER_VERSION_STRING));
         applyTheme(app);
 
         tftp::gui::MainWindow window;
@@ -48,6 +49,6 @@ int main(int argc, char *argv[]) {
 
     QCoreApplication app(argc, argv);
     QCoreApplication::setApplicationName(QStringLiteral("AetherTFTP"));
-    QCoreApplication::setApplicationVersion(QStringLiteral("0.1.0"));
+    QCoreApplication::setApplicationVersion(QStringLiteral(AETHER_VERSION_STRING));
     return tftp::CliRunner::run(app);
 }

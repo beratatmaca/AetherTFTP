@@ -14,8 +14,44 @@ permissions:
   contents: write
 
 jobs:
+  version:
+    name: Compute Version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      build: ${{ steps.v.outputs.build }}
+      sha: ${{ steps.v.outputs.sha }}
+      is_tag: ${{ steps.v.outputs.is_tag }}
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Resolve version
+        id: v
+        shell: bash
+        run: |
+          base=$(tr -d '[:space:]' < VERSION)
+          build=$(git rev-list --count HEAD)
+          sha=$(git rev-parse --short HEAD)
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            version="${GITHUB_REF_NAME#v}"
+            is_tag=true
+          else
+            version="${base}.${build}"
+            is_tag=false
+          fi
+          {
+            echo "version=$version"
+            echo "build=$build"
+            echo "sha=$sha"
+            echo "is_tag=$is_tag"
+          } >> "$GITHUB_OUTPUT"
+          echo "Resolved version: $version (build $build, commit $sha)"
+
   build-and-release:
     name: Build and Package on ${{ matrix.os }}
+    needs: version
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -51,7 +87,9 @@ jobs:
       - name: Configure CMake (Linux)
         if: matrix.os == 'ubuntu-latest'
         run: |
-          cmake -G "Unix Makefiles" -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
+          cmake -G "Unix Makefiles" -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON -DBUILD_COVERAGE=OFF \
+            -DAETHER_BUILD_NUMBER=${{ needs.version.outputs.build }} \
+            -DAETHER_GIT_SHA=${{ needs.version.outputs.sha }}
 
       # macOS Setup & Compilation
       - name: Configure CMake (macOS)
@@ -60,14 +98,17 @@ jobs:
           cmake -G "Unix Makefiles" -B build \
             -DCMAKE_BUILD_TYPE=Release \
             -DBUILD_TESTING=ON \
-            -DAGL_LIBRARY="-framework OpenGL"
+            -DBUILD_COVERAGE=OFF \
+            -DAGL_LIBRARY="-framework OpenGL" \
+            -DAETHER_BUILD_NUMBER=${{ needs.version.outputs.build }} \
+            -DAETHER_GIT_SHA=${{ needs.version.outputs.sha }}
 
       # Windows Setup & Compilation
       - name: Configure CMake (Windows)
         if: matrix.os == 'windows-latest'
         shell: pwsh
         run: |
-          cmake -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
+          cmake -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON -DBUILD_COVERAGE=OFF -DAETHER_BUILD_NUMBER=${{ needs.version.outputs.build }} -DAETHER_GIT_SHA=${{ needs.version.outputs.sha }}
 
       - name: Compile Code (All Platforms)
         run: |
@@ -108,7 +149,7 @@ jobs:
 
   publish-release:
     name: Create GitHub Release
-    needs: build-and-release
+    needs: [version, build-and-release]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
     steps:
@@ -127,8 +168,53 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: release-files/*
-          tag_name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || 'latest' }}
-          name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || 'Latest Main Build' }}
-          prerelease: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+          tag_name: ${{ needs.version.outputs.is_tag == 'true' && github.ref_name || 'latest' }}
+          name: ${{ needs.version.outputs.is_tag == 'true' && format('AetherTFTP v{0}', needs.version.outputs.version) || format('AetherTFTP v{0} (latest main)', needs.version.outputs.version) }}
+          prerelease: ${{ needs.version.outputs.is_tag != 'true' }}
+          body: |
+            Automated build of AetherTFTP.
+
+            - **Version:** ${{ needs.version.outputs.version }}
+            - **Build number:** ${{ needs.version.outputs.build }}
+            - **Commit:** ${{ needs.version.outputs.sha }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-snap:
+    name: Build Snap Package
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Build Snap
+        uses: snapcore/action-build@v1
+        id: build
+
+      - name: Upload Snap Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AetherTFTP-Linux-Snap
+          path: ${{ steps.build.outputs.snap }}
+
+  publish-snap:
+    name: Publish to Snap Store
+    needs: [version, build-snap]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - name: Download Built Snap
+        uses: actions/download-artifact@v4
+        with:
+          name: AetherTFTP-Linux-Snap
+          path: .
+
+      - name: Publish Snap
+        uses: snapcore/action-publish@v1
+        env:
+          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
+        with:
+          snap: ./*.snap
+          release: ${{ needs.version.outputs.is_tag == 'true' && 'stable' || 'edge' }}

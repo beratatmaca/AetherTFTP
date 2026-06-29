@@ -36,7 +36,7 @@ bool CliRunner::wantsGui(const QStringList &args) {
     return args.size() <= 1;  // program name only : no arguments supplied.
 }
 
-int CliRunner::run(QCoreApplication &app) {
+int CliRunner::run(QCoreApplication &app, const QStringList &args) {
     QCommandLineParser parser;
     parser.setApplicationDescription(QStringLiteral("AetherTFTP — cross-platform TFTP client/server"));
     parser.addHelpOption();
@@ -63,7 +63,13 @@ int CliRunner::run(QCoreApplication &app) {
         {QStringLiteral("bind"), QStringLiteral("Server bind address (default 0.0.0.0)."), QStringLiteral("address")},
     });
 
-    parser.process(app);
+    QStringList argsToParse = args;
+    if (argsToParse.isEmpty()) {
+        argsToParse = QCoreApplication::arguments();
+    } else {
+        argsToParse.prepend(QStringLiteral("AetherTFTP"));
+    }
+    parser.process(argsToParse);
 
     const quint16 port =
         parser.isSet(QStringLiteral("port")) ? quint16(parser.value(QStringLiteral("port")).toUInt()) : quint16(kDefaultPort);

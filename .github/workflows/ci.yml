@@ -70,7 +70,7 @@ jobs:
       - name: Install Linux Build Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential libgl1-mesa-dev cmake g++ qt6-base-dev
+          sudo apt-get install -y build-essential libgl1-mesa-dev cmake g++ qt6-base-dev tftp-hpa
 
       - name: Configure CMake
         run: |
@@ -98,7 +98,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install deps
-        run: sudo apt-get update && sudo apt-get install -y cmake g++ qt6-base-dev lcov
+        run: sudo apt-get update && sudo apt-get install -y cmake g++ qt6-base-dev lcov tftp-hpa
       - name: Configure (coverage)
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DBUILD_COVERAGE=ON
       - name: Build

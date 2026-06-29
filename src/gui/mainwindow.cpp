@@ -8,6 +8,9 @@
 #include <QMainWindow>
 #include <QWidget>
 #include <QTimer>
+#include <QMenuBar>
+#include <QMessageBox>
+#include <QAction>
 
 #include <QDir>
 #include <QDragEnterEvent>
@@ -80,6 +83,30 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     connect(m_metricsTimer, &QTimer::timeout, this, &MainWindow::updateMetrics);
     m_metricsTimer->start();
     m_metricsSpeedTimer.start();
+
+    // Help -> About
+    auto *helpMenu = menuBar()->addMenu(tr("&Help"));
+    auto *aboutAct = helpMenu->addAction(tr("&About AetherTFTP..."));
+    connect(aboutAct, &QAction::triggered, this, [this]() {
+        QMessageBox::about(
+            this, tr("About AetherTFTP"),
+            tr("<h3>AetherTFTP</h3>"
+               "<p>A modern, lightweight, open-source cross-platform TFTP client and server application.</p>"
+               "<p>Built using the <b>Qt 6</b> framework (version %1) and C++17.</p>"
+               "<p>License: <b>MIT License</b></p>"
+               "<p>Copyright &copy; 2026 AetherTFTP Project</p>"
+               "<hr/>"
+               "<p><b>LGPL Compliance Notice:</b><br/>"
+               "In precompiled releases, this application dynamically links to the Qt library under the GNU Lesser General Public License "
+               "(LGPL) version 3.<br/>"
+               "You can obtain the source code of the Qt library from <a href='https://www.qt.io/download'>qt.io/download</a>. "
+               "In accordance with the LGPLv3, you are permitted to modify the Qt library and run this application with your modified "
+               "version.</p>")
+                .arg(QString::fromLatin1(qVersion())));
+    });
+
+    auto *aboutQtAct = helpMenu->addAction(tr("About &Qt..."));
+    connect(aboutQtAct, &QAction::triggered, this, [this]() { QMessageBox::aboutQt(this, tr("About Qt")); });
 
     appendLog(QStringLiteral("Ready. Drag files onto the window to upload."));
 }
