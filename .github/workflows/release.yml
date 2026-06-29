@@ -39,7 +39,7 @@ jobs:
         uses: jurplel/install-qt-action@v3
         with:
           version: '6.4.*'
-          modules: 'qtcore qtnetwork qttest'
+          modules: 'qtcore qtnetwork qttest qtwidgets'
           cache: true
 
       # Linux Setup & Compilation
@@ -88,12 +88,9 @@ jobs:
       - name: Package app (macOS)
         if: matrix.os == 'macos-latest'
         run: |
-          # Create temporary assets directory if needed
-          mkdir -p build/bin
-          cp build/aethertftp build/bin/
           # Deploy Qt dependencies and package as dmg
-          macdeployqt build/bin/aethertftp -dmg
-          mv build/bin/aethertftp.dmg build/AetherTFTP.dmg
+          macdeployqt build/aethertftp.app -dmg
+          mv build/aethertftp.dmg build/AetherTFTP.dmg
 
       # Upload Build Artifacts to Workflow Run
       - name: Upload Artifacts

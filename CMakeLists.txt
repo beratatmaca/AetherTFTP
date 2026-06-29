@@ -49,7 +49,11 @@ add_library(aether_gui STATIC
 )
 target_link_libraries(aether_gui PUBLIC aether_core Qt6::Core Qt6::Widgets)
 
-add_executable(aethertftp src/main.cpp)
+if(APPLE)
+    add_executable(aethertftp MACOSX_BUNDLE src/main.cpp)
+else()
+    add_executable(aethertftp src/main.cpp)
+endif()
 target_link_libraries(aethertftp PRIVATE aether_cli aether_gui)
 
 include(CTest)
