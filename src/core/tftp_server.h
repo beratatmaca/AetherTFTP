@@ -129,8 +129,17 @@ public:
     /** @brief Format server metrics for Prometheus exporter. */
     QString getMetricsFormatted() const;
 
-    /** @brief Start the metrics exporter server on @p port. */
-    bool startMetricsServer(quint16 port);
+    /**
+     * @brief Start the metrics exporter server.
+     * @param port TCP port to listen on (0 lets the OS choose).
+     * @param address Bind address; defaults to loopback so operational metrics
+     *        are not exposed on all interfaces. Pass QHostAddress::Any to allow
+     *        remote scraping.
+     * @return @c true if the listener bound successfully.
+     */
+    bool startMetricsServer(
+        quint16 port,
+        const QHostAddress &address = QHostAddress(QHostAddress::LocalHost));
     /** @brief Stop the metrics exporter server. */
     void stopMetricsServer();
     /** @return The metrics server port, or 0 if not running. */

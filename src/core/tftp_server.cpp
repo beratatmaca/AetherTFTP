@@ -188,10 +188,12 @@ void TftpServer::onReadyRead() {
         quint16 senderPort = 0;
         m_socket->readDatagram(buf.data(), buf.size(), &sender, &senderPort);
 
-        // Single-port multiplexing routing using endpoint string
+        // Single-port multiplexing routing using endpoint string. A session
+        // registered in m_sessions has no socket of its own, so its datagrams
+        // must always be routed here.
         const QString key =
             sender.toString() + QLatin1Char(':') + QString::number(senderPort);
-        if (m_singlePortMode && m_sessions.contains(key)) {
+        if (m_sessions.contains(key)) {
             m_sessions[key]->processDatagram(buf);
             continue;
         }
@@ -248,9 +250,11 @@ void TftpServer::onReadyRead() {
                 } else {
                     ++m_transfersFailure;
                 }
-                if (m_singlePortMode) {
-                    m_sessions.remove(key);
-                }
+                // Unconditional: removes the routing entry if present (a
+                // single-port session) and is a harmless no-op otherwise.
+                // Guarding on the flag could strand a dangling pointer if the
+                // mode was toggled off while the session was in flight.
+                m_sessions.remove(key);
                 emit transferFinished(fname, ok, msg);
 
                 logEvent(
@@ -386,10 +390,10 @@ QString TftpServer::getMetricsFormatted() const {
     return result;
 }
 
-bool TftpServer::startMetricsServer(quint16 port) {
+bool TftpServer::startMetricsServer(quint16 port, const QHostAddress &address) {
     stopMetricsServer();
     m_metricsServer = new MetricsExporter(this, this);
-    if (!m_metricsServer->listen(QHostAddress::Any, port)) {
+    if (!m_metricsServer->listen(address, port)) {
         m_metricsServer->deleteLater();
         m_metricsServer = nullptr;
         return false;

@@ -35,11 +35,14 @@ struct TftpSession::ReadTask : public QRunnable {
             }
         }
         if (s) {
-            QMetaObject::invokeMethod(s.data(), [s, b, payload, ok]() {
-                if (s) {
-                    s->onDataBlockRead(b, payload, ok);
-                }
-            }, Qt::QueuedConnection);
+            QMetaObject::invokeMethod(
+                s.data(),
+                [s, b, payload, ok]() {
+                    if (s) {
+                        s->onDataBlockRead(b, payload, ok);
+                    }
+                },
+                Qt::QueuedConnection);
         }
     }
 };
@@ -66,11 +69,14 @@ struct TftpSession::WriteTask : public QRunnable {
         }
         if (s) {
             int size = p.size();
-            QMetaObject::invokeMethod(s.data(), [s, b, size, ok]() {
-                if (s) {
-                    s->onDataBlockWritten(b, size, ok);
-                }
-            }, Qt::QueuedConnection);
+            QMetaObject::invokeMethod(
+                s.data(),
+                [s, b, size, ok]() {
+                    if (s) {
+                        s->onDataBlockWritten(b, size, ok);
+                    }
+                },
+                Qt::QueuedConnection);
         }
     }
 };
@@ -331,10 +337,12 @@ void TftpSession::sendDataBlock(quint16 block) {
         return;
 
     const qint64 offset = qint64(block - 1) * m_blockSize;
-    QThreadPool::globalInstance()->start(new ReadTask(this, block, offset, m_blockSize));
+    QThreadPool::globalInstance()->start(
+        new ReadTask(this, block, offset, m_blockSize));
 }
 
-void TftpSession::onDataBlockRead(quint16 block, const QByteArray &payload, bool ok) {
+void TftpSession::onDataBlockRead(quint16 block, const QByteArray &payload,
+                                  bool ok) {
     if (!ok || m_finished)
         return;
 
