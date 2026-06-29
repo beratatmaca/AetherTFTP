@@ -47,6 +47,24 @@ endif()
 
 find_package(Qt6 REQUIRED COMPONENTS Core Network Widgets)
 
+# Prebuilt Qt 6 for macOS can carry a link reference to Apple's long-removed
+# AGL framework (pulled in transitively by Qt6::Gui), which breaks linking on
+# current macOS SDKs with: "ld: framework 'AGL' not found". We don't use
+# OpenGL/AGL directly, so rewrite any AGL reference in Qt's imported targets to
+# the still-present OpenGL framework.
+if(APPLE)
+    foreach(_qt_target Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Network)
+        if(TARGET ${_qt_target})
+            get_target_property(_qt_link_libs ${_qt_target} INTERFACE_LINK_LIBRARIES)
+            if(_qt_link_libs)
+                list(TRANSFORM _qt_link_libs REPLACE "^AGL$" "-framework OpenGL")
+                list(TRANSFORM _qt_link_libs REPLACE "^.*[/ ]AGL(\\.framework)?$" "-framework OpenGL")
+                set_target_properties(${_qt_target} PROPERTIES INTERFACE_LINK_LIBRARIES "${_qt_link_libs}")
+            endif()
+        endif()
+    endforeach()
+endif()
+
 add_library(aether_core STATIC
     src/core/tftp_protocol.cpp
     src/core/tftp_protocol.h

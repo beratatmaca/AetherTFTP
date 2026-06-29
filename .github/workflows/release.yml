@@ -99,7 +99,6 @@ jobs:
             -DCMAKE_BUILD_TYPE=Release \
             -DBUILD_TESTING=ON \
             -DBUILD_COVERAGE=OFF \
-            -DAGL_LIBRARY="-framework OpenGL" \
             -DAETHER_BUILD_NUMBER=${{ needs.version.outputs.build }} \
             -DAETHER_GIT_SHA=${{ needs.version.outputs.sha }}
 
