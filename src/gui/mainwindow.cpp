@@ -329,12 +329,15 @@ QWidget *MainWindow::buildMetricsGroup() {
     auto *box = new QGroupBox(QStringLiteral("Metrics Dashboard"), this);
     auto *layout = new QVBoxLayout(box);
 
-    m_metricsActiveLabel = new QLabel(QStringLiteral("Active Sessions: 0"), box);
+    m_metricsActiveLabel =
+        new QLabel(QStringLiteral("Active Sessions: 0"), box);
     m_metricsBytesLabel = new QLabel(QStringLiteral("Transferred: 0 B"), box);
     m_metricsTransfersLabel =
         new QLabel(QStringLiteral("Transfers (S/F): 0 / 0"), box);
-    m_metricsRetransLabel = new QLabel(QStringLiteral("Retransmissions: 0"), box);
-    m_metricsSpeedLabel = new QLabel(QStringLiteral("Current Speed: 0 B/s"), box);
+    m_metricsRetransLabel =
+        new QLabel(QStringLiteral("Retransmissions: 0"), box);
+    m_metricsSpeedLabel =
+        new QLabel(QStringLiteral("Current Speed: 0 B/s"), box);
 
     layout->addWidget(m_metricsActiveLabel);
     layout->addWidget(m_metricsBytesLabel);
