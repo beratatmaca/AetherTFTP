@@ -1,0 +1,35 @@
+# Build directories
+/build/
+bin/
+obj/
+# Compiled object files
+*.o
+*.obj
+# Executables
+*.exe
+*.out
+*.app
+# Precompiled headers
+*.gch
+*.pch
+# Debugger and linker files
+*.pdb
+*.ilk
+# Compiled libraries
+*.so
+*.dylib
+*.dll
+*.a
+*.lib
+# CMake artifacts
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+CTestTestfile.cmake
+Testing/
+# Qt moc / generated
+moc_*.cpp
+*.moc
+qrc_*.cpp
+ui_*.h
+build_*/

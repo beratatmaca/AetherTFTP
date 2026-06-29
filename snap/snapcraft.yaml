@@ -1,0 +1,41 @@
+name: aethertftp
+base: core24
+version: '0.1.0'
+summary: Modern lightweight TFTP GUI & CLI client and server
+description: |
+  AetherTFTP is a modern, lightweight, open-source cross-platform TFTP client and server application.
+  Written in C++17 and utilizing the Qt 6 framework, it is designed for speed, reliability, and high-block-size network throughput.
+
+grade: stable
+confinement: strict
+
+apps:
+  aethertftp:
+    command: bin/aethertftp
+    plugs:
+      - network
+      - network-bind
+
+  server-daemon:
+    command: bin/aethertftp --server --port 6969 --dir $SNAP_COMMON
+    plugs:
+      - network
+      - network-bind
+    daemon: simple
+    restart-condition: on-failure
+
+parts:
+  aethertftp:
+    plugin: cmake
+    source: .
+    cmake-parameters:
+      - -DCMAKE_BUILD_TYPE=Release
+      - -DBUILD_TESTING=OFF
+    build-packages:
+      - build-essential
+      - qt6-base-dev
+      - libgl1-mesa-dev
+    stage-packages:
+      - libqt6core6
+      - libqt6network6
+      - libgl1

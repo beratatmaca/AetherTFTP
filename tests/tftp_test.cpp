@@ -620,7 +620,8 @@ void TFTPProtocolTest::testMetricsExporterHardening() {
     const quint16 mPort = m_server->metricsServerPort();
     QVERIFY(mPort > 0);
 
-    // Issue a raw HTTP request and return the full response text.
+    // Issue a raw HTTP request and return the full response text. Uses a
+    // QEventLoop so the in-process exporter gets its events serviced.
     auto request = [mPort](const QByteArray &raw) -> QString {
         QTcpSocket socket;
         socket.connectToHost(QHostAddress::LocalHost, mPort);
@@ -628,12 +629,20 @@ void TFTPProtocolTest::testMetricsExporterHardening() {
             return QString();
         socket.write(raw);
         socket.flush();
-        QByteArray response;
+
+        QEventLoop loop;
+        QObject::connect(&socket, &QTcpSocket::readyRead, &loop,
+                         &QEventLoop::quit);
+        QObject::connect(&socket, &QTcpSocket::disconnected, &loop,
+                         &QEventLoop::quit);
+        QTimer::singleShot(2000, &loop, &QEventLoop::quit);
+        loop.exec();
+
+        QByteArray response = socket.readAll();
         while (socket.state() == QAbstractSocket::ConnectedState &&
-               socket.waitForReadyRead(2000)) {
+               socket.waitForReadyRead(100)) {
             response.append(socket.readAll());
         }
-        response.append(socket.readAll());
         socket.close();
         return QString::fromUtf8(response);
     };

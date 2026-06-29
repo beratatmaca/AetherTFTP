@@ -1,0 +1,64 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "CMake: configure (Debug)",
+      "type": "shell",
+      "command": "cmake",
+      "args": [
+        "-S", "${workspaceFolder}",
+        "-B", "${workspaceFolder}/build",
+        "-DCMAKE_BUILD_TYPE=Debug",
+        "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "Build",
+      "type": "shell",
+      "command": "cmake",
+      "args": ["--build", "${workspaceFolder}/build", "-j"],
+      "group": { "kind": "build", "isDefault": true },
+      "dependsOn": "CMake: configure (Debug)",
+      "problemMatcher": ["$gcc"]
+    },
+    {
+      "label": "Test (ctest)",
+      "type": "shell",
+      "command": "ctest",
+      "args": ["--test-dir", "${workspaceFolder}/build", "--output-on-failure"],
+      "group": { "kind": "test", "isDefault": true },
+      "dependsOn": "Build",
+      "problemMatcher": []
+    },
+    {
+      "label": "Format (clang-format)",
+      "type": "shell",
+      "command": "cmake",
+      "args": ["--build", "${workspaceFolder}/build", "--target", "format"],
+      "problemMatcher": []
+    },
+    {
+      "label": "Format check",
+      "type": "shell",
+      "command": "cmake",
+      "args": ["--build", "${workspaceFolder}/build", "--target", "format-check"],
+      "problemMatcher": []
+    },
+    {
+      "label": "Lint (clang-tidy)",
+      "type": "shell",
+      "command": "cmake",
+      "args": ["--build", "${workspaceFolder}/build", "--target", "tidy"],
+      "dependsOn": "Build",
+      "problemMatcher": ["$gcc"]
+    },
+    {
+      "label": "Docs (Doxygen)",
+      "type": "shell",
+      "command": "cmake",
+      "args": ["--build", "${workspaceFolder}/build", "--target", "docs"],
+      "problemMatcher": []
+    }
+  ]
+}

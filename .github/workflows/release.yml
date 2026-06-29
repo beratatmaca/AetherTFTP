@@ -1,0 +1,125 @@
+name: AetherTFTP Release Pipeline
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    name: Build and Package on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            artifact-name: "AetherTFTP-Linux-Debian"
+          - os: macos-latest
+            artifact-name: "AetherTFTP-macOS-DMG"
+          - os: windows-latest
+            artifact-name: "AetherTFTP-Windows-MSI"
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Qt 6 SDK
+        uses: jurplel/install-qt-action@v3
+        with:
+          version: '6.4.*'
+          modules: 'qtcore qtnetwork qttest'
+          cache: true
+
+      # Linux Setup & Compilation
+      - name: Install Linux Build Dependencies
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libgl1-mesa-dev
+
+      - name: Configure CMake (Linux / macOS)
+        if: matrix.os != 'windows-latest'
+        run: |
+          cmake -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
+
+      # Windows Setup & Compilation
+      - name: Configure CMake (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          cmake -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
+
+      - name: Compile Code (All Platforms)
+        run: |
+          cmake --build build --config Release -j2
+
+      - name: Run Unit Tests
+        run: |
+          ctest --test-dir build --output-on-failure -C Release
+
+      # Linux Packaging via CPack
+      - name: Generate DEB Package (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          cd build
+          cpack -G DEB
+
+      # Windows Packaging via CPack + WiX
+      - name: Generate MSI Package (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          cd build
+          cpack -G WIX
+
+      # macOS Deployment and Packaging (macdeployqt + dmg packaging)
+      - name: Package app (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          # Create temporary assets directory if needed
+          mkdir -p build/bin
+          cp build/aethertftp build/bin/
+          # Deploy Qt dependencies and package as dmg
+          macdeployqt build/bin/aethertftp -dmg
+          mv build/bin/aethertftp.dmg build/AetherTFTP.dmg
+
+      # Upload Build Artifacts to Workflow Run
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact-name }}
+          path: |
+            build/*.deb
+            build/*.dmg
+            build/*.msi
+            build/*.zip
+
+  publish-release:
+    name: Create GitHub Release
+    needs: build-and-release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download All Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Flatten Artifact Directory
+        run: |
+          mkdir -p release-files
+          find artifacts -type f \( -name "*.deb" -o -name "*.dmg" -o -name "*.msi" \) -exec cp {} release-files/ \;
+          ls -la release-files/
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: release-files/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

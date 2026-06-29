@@ -1,0 +1,18 @@
+CompileFlags:
+  CompilationDatabase: "build"
+  Add:
+    - "-std=c++17"
+    - "-Wall"
+    - "-Wextra"
+    - "-Wpedantic"
+    - "-isystem"
+    - "/usr/include/qt6"
+
+Diagnostics:
+  ClangTidy:
+    Add:
+      - "bugprone-*"
+      - "modernize-*"
+      - "performance-*"
+    Remove:
+      - "modernize-use-trailing-return-type"
