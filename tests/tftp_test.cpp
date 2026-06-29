@@ -85,10 +85,10 @@ QByteArray TFTPProtocolTest::makePayload(int size, char seed) const {
 }
 
 QString TFTPProtocolTest::writeServerFile(const QString &name, const QByteArray &data) const {
-    const QString path = m_serverDir.path() + QLatin1Char('/') + name;
+    QString path = m_serverDir.path() + QLatin1Char('/') + name;
     QFile f(path);
     if (!f.open(QIODevice::WriteOnly))
-        return QString();
+        return {};
     f.write(data);
     f.close();
     return path;
@@ -591,7 +591,7 @@ void TFTPProtocolTest::testMetricsExporterHardening() {
         QTcpSocket socket;
         socket.connectToHost(QHostAddress::LocalHost, mPort);
         if (!socket.waitForConnected(2000))
-            return QString();
+            return {};
         socket.write(raw);
         socket.flush();
 

@@ -37,7 +37,7 @@ public:
      * @param filePath Sandbox-resolved absolute path to read or write.
      * @param parent Optional QObject parent.
      */
-    TftpSession(const QHostAddress &peer, quint16 peerPort, const Request &request, const QString &filePath, QObject *parent = nullptr);
+    TftpSession(const QHostAddress &peer, quint16 peerPort, const Request &request, QString filePath, QObject *parent = nullptr);
     ~TftpSession() override;
 
     /**

@@ -22,6 +22,20 @@ jobs:
       - name: Check formatting
         run: cmake --build build --target format-check
 
+  docs:
+    name: Documentation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake qt6-base-dev doxygen graphviz
+      - name: Configure CMake
+        run: cmake -S . -B build -DBUILD_TESTING=OFF
+      - name: Generate Documentation
+        run: cmake --build build --target docs
+
   unit-tests:
     name: Unit Tests
     needs: format

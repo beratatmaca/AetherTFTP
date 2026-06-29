@@ -17,8 +17,22 @@ Checks: >
   -readability-named-parameter,
   -readability-function-cognitive-complexity,
   -bugprone-easily-swappable-parameters,
-  -bugprone-narrowing-conversions
+  -bugprone-narrowing-conversions,
+  -readability-redundant-access-specifiers,
+  -readability-suspicious-call-argument,
+  -clang-analyzer-cplusplus.NewDeleteLeaks,
+  -clang-analyzer-cplusplus.NewDelete
 
-WarningsAsErrors: ""
+# Intentionally disabled checks (rationale):
+#   readability-redundant-access-specifiers — false positive on Qt's
+#     `private slots:` / `private:` idiom; moc requires the separate sections
+#     even though the access level is the same.
+#   readability-suspicious-call-argument — name-similarity heuristic that
+#     mis-flags correct calls (e.g. uploadFile(host, port, file, remote)).
+#   clang-analyzer-cplusplus.NewDelete[Leaks] — the analyzer does not model
+#     Qt ownership transfer (QMetaObject::invokeMethod takes ownership of the
+#     functor; QPointer/QObject parent ownership), so it reports phantom leaks
+#     and use-after-free inside Qt headers for idiomatic code.
+WarningsAsErrors: "*"
 HeaderFilterRegex: '.*/src/.*\.(h|hpp)$'
 FormatStyle: file

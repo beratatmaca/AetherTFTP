@@ -32,7 +32,7 @@ class TransferModel : public QAbstractTableModel {
     Q_OBJECT
 public:
     /** @brief Logical column indices. */
-    enum Column {
+    enum Column : quint8 {
         ColName = 0,
         ColDirection,
         ColPeer,

@@ -94,8 +94,12 @@ void TransferModel::setFinished(int row, bool ok, const QString &message) {
     it.ok = ok;
     if (ok)
         it.percent = 100;
-    it.status =
-        ok ? QStringLiteral("Completed") : (message.isEmpty() ? QStringLiteral("Failed") : QStringLiteral("Failed: %1").arg(message));
+    if (ok)
+        it.status = QStringLiteral("Completed");
+    else if (message.isEmpty())
+        it.status = QStringLiteral("Failed");
+    else
+        it.status = QStringLiteral("Failed: %1").arg(message);
     emit dataChanged(index(row, ColProgress), index(row, ColStatus));
 }
 

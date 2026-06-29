@@ -1,0 +1,8 @@
+# Test-specific overrides on top of the project's root .clang-tidy.
+---
+InheritParentConfig: true
+Checks: >
+  -readability-convert-member-functions-to-static
+# readability-convert-member-functions-to-static — Qt Test cases are declared
+#   as `private slots:` and must remain non-static member functions so the
+#   meta-object system can invoke them; the check mis-flags them.

@@ -131,11 +131,11 @@ bool TftpServer::isAllowed(const QHostAddress &clientAddress, bool isUpload) con
 QString TftpServer::resolveSafePath(const QString &filename) const {
     const QString canonicalRoot = QFileInfo(m_rootDir).canonicalFilePath();
     if (canonicalRoot.isEmpty())
-        return QString();
+        return {};
 
     const QString cleaned = QDir::cleanPath(filename);
     if (cleaned.isEmpty() || QDir::isAbsolutePath(cleaned) || cleaned.startsWith(QLatin1String(".."))) {
-        return QString();
+        return {};
     }
 
     const QString candidate = QDir::cleanPath(canonicalRoot + QLatin1Char('/') + cleaned);
@@ -147,22 +147,22 @@ QString TftpServer::resolveSafePath(const QString &filename) const {
         QFileInfo parentInfo(info.absolutePath());
         QString parentCanonical = parentInfo.canonicalFilePath();
         if (parentCanonical.isEmpty())
-            return QString();
+            return {};
         canonicalCandidate = QDir::cleanPath(parentCanonical + QLatin1Char('/') + info.fileName());
     }
 
     if (canonicalCandidate.isEmpty())
-        return QString();
+        return {};
 
 #ifdef Q_OS_WIN
     const QString rootPrefix = (canonicalRoot + QLatin1Char('/')).toLower();
     const QString candidateLower = canonicalCandidate.toLower();
     if (candidateLower != canonicalRoot.toLower() && !candidateLower.startsWith(rootPrefix))
-        return QString();
+        return {};
 #else
     const QString rootPrefix = canonicalRoot + QLatin1Char('/');
     if (canonicalCandidate != canonicalRoot && !canonicalCandidate.startsWith(rootPrefix))
-        return QString();
+        return {};
 #endif
     return canonicalCandidate;
 }
@@ -252,7 +252,7 @@ qint64 TftpServer::requestGlobalDelay(qint64 packetSize) {
     if (m_globalLimit <= 0)
         return 0;
 
-    const double packetSizeDouble = static_cast<double>(packetSize);
+    const auto packetSizeDouble = static_cast<double>(packetSize);
 
     if (!m_globalTimer.isValid()) {
         m_globalTimer.start();

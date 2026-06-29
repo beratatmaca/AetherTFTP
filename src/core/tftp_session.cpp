@@ -5,6 +5,7 @@
 #include <QTimer>
 #include <QUdpSocket>
 #include <cmath>
+#include <utility>
 #include <QThreadPool>
 #include <QRunnable>
 
@@ -49,7 +50,7 @@ struct TftpSession::WriteTask : public QRunnable {
     quint16 block;
     QByteArray payload;
 
-    WriteTask(TftpSession *s, quint16 b, const QByteArray &p) : session(s), block(b), payload(p) { setAutoDelete(true); }
+    WriteTask(TftpSession *s, quint16 b, QByteArray p) : session(s), block(b), payload(std::move(p)) { setAutoDelete(true); }
 
     void run() override {
         bool ok = false;
@@ -75,8 +76,13 @@ struct TftpSession::WriteTask : public QRunnable {
     }
 };
 
-TftpSession::TftpSession(const QHostAddress &peer, quint16 peerPort, const Request &request, const QString &filePath, QObject *parent)
-    : QObject(parent), m_peer(peer), m_peerPort(peerPort), m_request(request), m_filePath(filePath), m_isRead(request.op == OpCode::RRQ) {}
+TftpSession::TftpSession(const QHostAddress &peer, quint16 peerPort, const Request &request, QString filePath, QObject *parent)
+    : QObject(parent),
+      m_peer(peer),
+      m_peerPort(peerPort),
+      m_request(request),
+      m_filePath(std::move(filePath)),
+      m_isRead(request.op == OpCode::RRQ) {}
 
 TftpSession::~TftpSession() = default;
 
@@ -288,12 +294,11 @@ qint64 TftpSession::requestSessionDelay(qint64 packetSize) {
     if (m_sessionTokens >= packetSize) {
         m_sessionTokens -= packetSize;
         return 0;
-    } else {
-        double needed = double(packetSize) - m_sessionTokens;
-        qint64 delayMs = qint64(std::ceil(needed * 1000.0 / double(m_sessionLimit)));
-        m_sessionTokens -= packetSize;
-        return delayMs;
     }
+    double needed = double(packetSize) - m_sessionTokens;
+    auto delayMs = qint64(std::ceil(needed * 1000.0 / double(m_sessionLimit)));
+    m_sessionTokens -= packetSize;
+    return delayMs;
 }
 
 // RRQ: we are sending the file
@@ -349,7 +354,7 @@ void TftpSession::sendAck(quint16 block) {
 }
 
 void TftpSession::handleData(quint16 block, const QByteArray &payload) {
-    const quint16 expected = quint16(m_currentBlock + 1);
+    const auto expected = quint16(m_currentBlock + 1);
 
     if (block == m_currentBlock) {
         m_lastPacket = buildAck(block);

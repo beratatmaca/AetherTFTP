@@ -274,7 +274,7 @@ void MainWindow::dropEvent(QDropEvent *event) {
         appendLog(QStringLiteral("Enter a host before dropping files to upload."));
         return;
     }
-    const quint16 port = quint16(m_clientPortSpin->value());
+    const auto port = quint16(m_clientPortSpin->value());
     for (const QUrl &url : event->mimeData()->urls()) {
         const QString local = url.toLocalFile();
         if (local.isEmpty() || !QFileInfo(local).isFile())

@@ -192,7 +192,7 @@ void TftpClient::onReadyRead() {
 
 void TftpClient::handleData(quint16 block, const QByteArray &payload) {
     m_awaitingFirstReply = false;
-    const quint16 expected = quint16(m_block + 1);
+    const auto expected = quint16(m_block + 1);
 
     if (block == m_block) {
         // Duplicate — re-ACK without rewriting.

@@ -101,7 +101,7 @@ private slots:
 
 private:
     /** @brief Direction of the active transfer. */
-    enum class Mode { Idle, Download, Upload };
+    enum class Mode : quint8 { Idle, Download, Upload };
 
     bool begin(Mode mode, const QString &host, quint16 port, const QString &remoteFile, const QString &localPath);
     void sendInitialRequest();
