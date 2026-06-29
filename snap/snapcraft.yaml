@@ -1,7 +1,7 @@
 name: aethertftp
 title: AetherTFTP
 base: core24
-version: '0.1.0'
+adopt-info: aethertftp
 summary: Modern lightweight TFTP GUI & CLI client and server
 description: |
   AetherTFTP is a modern, lightweight, open-source cross-platform TFTP client and server application.
@@ -52,3 +52,8 @@ parts:
       - libgraphite2-3
       - libharfbuzz0b
       - libmd4c0
+    override-pull: |
+      craftctl default
+      base=$(tr -d '[:space:]' < VERSION)
+      build=$(git rev-list --count HEAD)
+      craftctl set version="${base}.${build}"

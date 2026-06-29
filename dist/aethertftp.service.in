@@ -1,5 +1,5 @@
 [Unit]
-Description=AetherTFTP Headless TFTP Server
+Description=AetherTFTP Headless TFTP Server (v@PROJECT_VERSION@)
 After=network.target
 
 [Service]

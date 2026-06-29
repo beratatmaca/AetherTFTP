@@ -103,6 +103,12 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/DevTools.cmake)
 include(GNUInstallDirs)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    configure_file(
+        ${CMAKE_CURRENT_SOURCE_DIR}/dist/aethertftp.service.in
+        ${CMAKE_CURRENT_BINARY_DIR}/aethertftp.service
+        @ONLY
+    )
+
     install(TARGETS aether_core aether_cli aethertftp
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
         LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
@@ -112,7 +118,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/aether/core
         FILES_MATCHING PATTERN "*.h"
     )
-    install(FILES dist/aethertftp.service
+    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/aethertftp.service
         DESTINATION /lib/systemd/system
     )
 elseif(WIN32)
