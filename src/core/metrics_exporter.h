@@ -48,9 +48,7 @@ private:
     void handleRequest(QTcpSocket *socket, const QByteArray &headerBlock);
 
     /** @brief Write one HTTP response and begin closing the connection. */
-    void sendResponse(QTcpSocket *socket, int statusCode,
-                      const QByteArray &reason, const QByteArray &contentType,
-                      const QByteArray &body);
+    void sendResponse(QTcpSocket *socket, int statusCode, const QByteArray &reason, const QByteArray &contentType, const QByteArray &body);
 
     TftpServer *m_server = nullptr;
     QHash<QTcpSocket *, Connection> m_connections;

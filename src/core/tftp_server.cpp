@@ -26,14 +26,12 @@ TftpServer::~TftpServer() {
     close();
 }
 
-bool TftpServer::listen(const QHostAddress &address, quint16 port,
-                        const QString &rootDir) {
+bool TftpServer::listen(const QHostAddress &address, quint16 port, const QString &rootDir) {
     close();
 
     QDir dir(rootDir);
     if (!dir.exists()) {
-        m_lastError =
-            QStringLiteral("Root directory does not exist: %1").arg(rootDir);
+        m_lastError = QStringLiteral("Root directory does not exist: %1").arg(rootDir);
         return false;
     }
     m_rootDir = dir.absolutePath();
@@ -49,12 +47,8 @@ bool TftpServer::listen(const QHostAddress &address, quint16 port,
 
     m_globalTimer.invalidate();
 
-    logEvent(QStringLiteral("server_start"), QStringLiteral("server"),
-             address.toString(), QString(), 0, QStringLiteral("success"),
-             QStringLiteral("Listening on %1:%2, serving %3")
-                 .arg(address.toString())
-                 .arg(m_socket->localPort())
-                 .arg(m_rootDir));
+    logEvent(QStringLiteral("server_start"), QStringLiteral("server"), address.toString(), QString(), 0, QStringLiteral("success"),
+             QStringLiteral("Listening on %1:%2, serving %3").arg(address.toString()).arg(m_socket->localPort()).arg(m_rootDir));
     return true;
 }
 
@@ -84,9 +78,7 @@ void TftpServer::setWhitelist(const QList<QString> &cidrs) {
         if (parsed.first.isNull()) {
             QHostAddress ip(cidr);
             if (!ip.isNull()) {
-                m_whitelist.append(
-                    {ip, ip.protocol() == QAbstractSocket::IPv6Protocol ? 128
-                                                                        : 32});
+                m_whitelist.append({ip, ip.protocol() == QAbstractSocket::IPv6Protocol ? 128 : 32});
             }
         } else {
             m_whitelist.append({parsed.first, parsed.second});
@@ -101,9 +93,7 @@ void TftpServer::setBlacklist(const QList<QString> &cidrs) {
         if (parsed.first.isNull()) {
             QHostAddress ip(cidr);
             if (!ip.isNull()) {
-                m_blacklist.append(
-                    {ip, ip.protocol() == QAbstractSocket::IPv6Protocol ? 128
-                                                                        : 32});
+                m_blacklist.append({ip, ip.protocol() == QAbstractSocket::IPv6Protocol ? 128 : 32});
             }
         } else {
             m_blacklist.append({parsed.first, parsed.second});
@@ -111,8 +101,7 @@ void TftpServer::setBlacklist(const QList<QString> &cidrs) {
     }
 }
 
-bool TftpServer::isAllowed(const QHostAddress &clientAddress,
-                           bool isUpload) const {
+bool TftpServer::isAllowed(const QHostAddress &clientAddress, bool isUpload) const {
     if (isUpload && m_readOnly) {
         return false;
     }
@@ -145,13 +134,11 @@ QString TftpServer::resolveSafePath(const QString &filename) const {
         return QString();
 
     const QString cleaned = QDir::cleanPath(filename);
-    if (cleaned.isEmpty() || QDir::isAbsolutePath(cleaned) ||
-        cleaned.startsWith(QLatin1String(".."))) {
+    if (cleaned.isEmpty() || QDir::isAbsolutePath(cleaned) || cleaned.startsWith(QLatin1String(".."))) {
         return QString();
     }
 
-    const QString candidate =
-        QDir::cleanPath(canonicalRoot + QLatin1Char('/') + cleaned);
+    const QString candidate = QDir::cleanPath(canonicalRoot + QLatin1Char('/') + cleaned);
     QFileInfo info(candidate);
     QString canonicalCandidate;
     if (info.exists()) {
@@ -161,8 +148,7 @@ QString TftpServer::resolveSafePath(const QString &filename) const {
         QString parentCanonical = parentInfo.canonicalFilePath();
         if (parentCanonical.isEmpty())
             return QString();
-        canonicalCandidate = QDir::cleanPath(
-            parentCanonical + QLatin1Char('/') + info.fileName());
+        canonicalCandidate = QDir::cleanPath(parentCanonical + QLatin1Char('/') + info.fileName());
     }
 
     if (canonicalCandidate.isEmpty())
@@ -171,20 +157,17 @@ QString TftpServer::resolveSafePath(const QString &filename) const {
 #ifdef Q_OS_WIN
     const QString rootPrefix = (canonicalRoot + QLatin1Char('/')).toLower();
     const QString candidateLower = canonicalCandidate.toLower();
-    if (candidateLower != canonicalRoot.toLower() &&
-        !candidateLower.startsWith(rootPrefix))
+    if (candidateLower != canonicalRoot.toLower() && !candidateLower.startsWith(rootPrefix))
         return QString();
 #else
     const QString rootPrefix = canonicalRoot + QLatin1Char('/');
-    if (canonicalCandidate != canonicalRoot &&
-        !canonicalCandidate.startsWith(rootPrefix))
+    if (canonicalCandidate != canonicalRoot && !canonicalCandidate.startsWith(rootPrefix))
         return QString();
 #endif
     return canonicalCandidate;
 }
 
-void TftpServer::sendSessionPacket(const QByteArray &packet,
-                                   const QHostAddress &address, quint16 port) {
+void TftpServer::sendSessionPacket(const QByteArray &packet, const QHostAddress &address, quint16 port) {
     if (m_socket) {
         m_socket->writeDatagram(packet, address, port);
     }
@@ -197,8 +180,7 @@ void TftpServer::onReadyRead() {
         quint16 senderPort = 0;
         m_socket->readDatagram(buf.data(), buf.size(), &sender, &senderPort);
 
-        const QString key =
-            sender.toString() + QLatin1Char(':') + QString::number(senderPort);
+        const QString key = sender.toString() + QLatin1Char(':') + QString::number(senderPort);
         if (m_sessions.contains(key)) {
             m_sessions[key]->processDatagram(buf);
             continue;
@@ -214,59 +196,46 @@ void TftpServer::onReadyRead() {
 
         // ACL Check
         if (!isAllowed(sender, isUpload)) {
-            QByteArray err =
-                buildError(ErrorCode::AccessViolation,
-                           QStringLiteral("Access violation by ACL policy"));
+            QByteArray err = buildError(ErrorCode::AccessViolation, QStringLiteral("Access violation by ACL policy"));
             m_socket->writeDatagram(err, sender, senderPort);
-            logEvent(QStringLiteral("transfer_rejected"), key, clientIp,
-                     req.filename, 0, QStringLiteral("failure"),
+            logEvent(QStringLiteral("transfer_rejected"), key, clientIp, req.filename, 0, QStringLiteral("failure"),
                      QStringLiteral("Access violation by ACL policy"));
             continue;
         }
 
         const QString safePath = resolveSafePath(req.filename);
         if (safePath.isEmpty()) {
-            QByteArray err = buildError(ErrorCode::AccessViolation,
-                                        QStringLiteral("Access violation"));
+            QByteArray err = buildError(ErrorCode::AccessViolation, QStringLiteral("Access violation"));
             m_socket->writeDatagram(err, sender, senderPort);
-            logEvent(QStringLiteral("transfer_rejected"), key, clientIp,
-                     req.filename, 0, QStringLiteral("failure"),
+            logEvent(QStringLiteral("transfer_rejected"), key, clientIp, req.filename, 0, QStringLiteral("failure"),
                      QStringLiteral("Access violation"));
             continue;
         }
 
-        auto *session =
-            new TftpSession(sender, senderPort, req, safePath, this);
+        auto *session = new TftpSession(sender, senderPort, req, safePath, this);
         session->setSessionLimit(m_sessionLimit);
         session->setSinglePortMode(m_singlePortMode);
 
         const QString fname = req.filename;
 
-        connect(session, &TftpSession::retransmissionOccurred, this,
-                [this]() { ++m_retransmissionCount; });
+        connect(session, &TftpSession::retransmissionOccurred, this, [this]() { ++m_retransmissionCount; });
 
-        connect(
-            session, &TftpSession::finished, this,
-            [this, session, fname, key, clientIp](bool ok, const QString &msg) {
-                --m_activeSessions;
-                m_historicalBytesTransferred += session->bytesTransferred();
-                if (ok) {
-                    ++m_transfersSuccess;
-                } else {
-                    ++m_transfersFailure;
-                }
-                m_sessions.remove(key);
-                emit transferFinished(fname, ok, msg);
+        connect(session, &TftpSession::finished, this, [this, session, fname, key, clientIp](bool ok, const QString &msg) {
+            --m_activeSessions;
+            m_historicalBytesTransferred += session->bytesTransferred();
+            if (ok) {
+                ++m_transfersSuccess;
+            } else {
+                ++m_transfersFailure;
+            }
+            m_sessions.remove(key);
+            emit transferFinished(fname, ok, msg);
 
-                logEvent(
-                    ok ? QStringLiteral("transfer_complete")
-                       : QStringLiteral("transfer_error"),
-                    key, clientIp, fname, session->blockCount(),
-                    ok ? QStringLiteral("success") : QStringLiteral("failure"),
-                    msg);
+            logEvent(ok ? QStringLiteral("transfer_complete") : QStringLiteral("transfer_error"), key, clientIp, fname,
+                     session->blockCount(), ok ? QStringLiteral("success") : QStringLiteral("failure"), msg);
 
-                session->deleteLater();
-            });
+            session->deleteLater();
+        });
 
         if (m_singlePortMode) {
             m_sessions.insert(key, session);
@@ -274,8 +243,7 @@ void TftpServer::onReadyRead() {
 
         ++m_activeSessions;
         emit transferStarted(fname, isUpload);
-        logEvent(QStringLiteral("transfer_start"), key, clientIp, fname, 0,
-                 QStringLiteral("started"));
+        logEvent(QStringLiteral("transfer_start"), key, clientIp, fname, 0, QStringLiteral("started"));
         session->start();
     }
 }
@@ -304,14 +272,11 @@ qint64 TftpServer::requestGlobalDelay(qint64 packetSize) {
     return delayMs;
 }
 
-void TftpServer::logEvent(const QString &eventType, const QString &sessionId,
-                          const QString &clientIp, const QString &fileName,
-                          int blockCount, const QString &status,
-                          const QString &message) {
+void TftpServer::logEvent(const QString &eventType, const QString &sessionId, const QString &clientIp, const QString &fileName,
+                          int blockCount, const QString &status, const QString &message) {
     if (m_jsonLoggingEnabled) {
         QJsonObject obj;
-        obj.insert(QStringLiteral("timestamp"),
-                   QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs));
+        obj.insert(QStringLiteral("timestamp"), QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs));
         obj.insert(QStringLiteral("event_type"), eventType);
         obj.insert(QStringLiteral("session_id"), sessionId);
         obj.insert(QStringLiteral("client_ip"), clientIp);
@@ -328,24 +293,17 @@ void TftpServer::logEvent(const QString &eventType, const QString &sessionId,
             emit logMessage(message);
         } else if (eventType == QLatin1String("transfer_rejected")) {
             if (message.contains(QLatin1String("ACL"))) {
-                emit logMessage(QStringLiteral("Rejected by ACL: %1 from %2")
-                                    .arg(fileName, clientIp));
+                emit logMessage(QStringLiteral("Rejected by ACL: %1 from %2").arg(fileName, clientIp));
             } else {
-                emit logMessage(
-                    QStringLiteral("Rejected unsafe path: %1").arg(fileName));
+                emit logMessage(QStringLiteral("Rejected unsafe path: %1").arg(fileName));
             }
-        } else if (eventType == QLatin1String("transfer_complete") ||
-                   eventType == QLatin1String("transfer_error")) {
-            emit logMessage(QStringLiteral("Transfer of %1 %2: %3")
-                                .arg(fileName,
-                                     status == QLatin1String("success")
-                                         ? QStringLiteral("OK")
-                                         : QStringLiteral("FAILED"),
-                                     message));
+        } else if (eventType == QLatin1String("transfer_complete") || eventType == QLatin1String("transfer_error")) {
+            emit logMessage(
+                QStringLiteral("Transfer of %1 %2: %3")
+                    .arg(fileName, status == QLatin1String("success") ? QStringLiteral("OK") : QStringLiteral("FAILED"), message));
         } else if (eventType == QLatin1String("transfer_start")) {
         } else {
-            emit logMessage(
-                QStringLiteral("[%1] %2 %3").arg(eventType, fileName, status));
+            emit logMessage(QStringLiteral("[%1] %2 %3").arg(eventType, fileName, status));
         }
     }
 }
@@ -377,10 +335,8 @@ QString TftpServer::getMetricsFormatted() const {
 
     os << "# HELP tftp_transfers_total Total number of TFTP transfers.\n";
     os << "# TYPE tftp_transfers_total counter\n";
-    os << "tftp_transfers_total{status=\"success\"} " << m_transfersSuccess
-       << "\n";
-    os << "tftp_transfers_total{status=\"failure\"} " << m_transfersFailure
-       << "\n\n";
+    os << "tftp_transfers_total{status=\"success\"} " << m_transfersSuccess << "\n";
+    os << "tftp_transfers_total{status=\"failure\"} " << m_transfersFailure << "\n\n";
 
     os << "# HELP tftp_retransmissions_total Total number of packet "
           "retransmissions.\n";

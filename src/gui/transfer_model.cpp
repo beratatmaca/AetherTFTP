@@ -26,8 +26,7 @@ QVariant TransferModel::data(const QModelIndex &index, int role) const {
             case ColName:
                 return it.name;
             case ColDirection:
-                return it.isUpload ? QStringLiteral("Upload")
-                                   : QStringLiteral("Download");
+                return it.isUpload ? QStringLiteral("Upload") : QStringLiteral("Download");
             case ColPeer:
                 return it.peer;
             case ColProgress:
@@ -43,8 +42,7 @@ QVariant TransferModel::data(const QModelIndex &index, int role) const {
     return {};
 }
 
-QVariant TransferModel::headerData(int section, Qt::Orientation orientation,
-                                   int role) const {
+QVariant TransferModel::headerData(int section, Qt::Orientation orientation, int role) const {
     if (role != Qt::DisplayRole || orientation != Qt::Horizontal)
         return {};
     switch (section) {
@@ -63,8 +61,7 @@ QVariant TransferModel::headerData(int section, Qt::Orientation orientation,
     }
 }
 
-int TransferModel::addTransfer(const QString &name, bool isUpload,
-                               const QString &peer) {
+int TransferModel::addTransfer(const QString &name, bool isUpload, const QString &peer) {
     const int row = m_items.size();
     beginInsertRows({}, row, row);
     TransferItem it;
@@ -98,15 +95,11 @@ void TransferModel::setFinished(int row, bool ok, const QString &message) {
     if (ok)
         it.percent = 100;
     it.status =
-        ok ? QStringLiteral("Completed")
-           : (message.isEmpty() ? QStringLiteral("Failed")
-                                : QStringLiteral("Failed: %1").arg(message));
+        ok ? QStringLiteral("Completed") : (message.isEmpty() ? QStringLiteral("Failed") : QStringLiteral("Failed: %1").arg(message));
     emit dataChanged(index(row, ColProgress), index(row, ColStatus));
 }
 
-void ProgressBarDelegate::paint(QPainter *painter,
-                                const QStyleOptionViewItem &option,
-                                const QModelIndex &index) const {
+void ProgressBarDelegate::paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const {
     if (index.column() != TransferModel::ColProgress) {
         QStyledItemDelegate::paint(painter, option, index);
         return;

@@ -67,8 +67,7 @@ private:
      * @param localFile Local file path (source for upload, dest for download).
      * @param remoteName Remote file name.
      */
-    void startTransfer(bool isUpload, const QString &host, quint16 port,
-                       const QString &localFile, const QString &remoteName);
+    void startTransfer(bool isUpload, const QString &host, quint16 port, const QString &localFile, const QString &remoteName);
 
     /** @return Number of transfers still in progress. */
     int activeTransfers() const;

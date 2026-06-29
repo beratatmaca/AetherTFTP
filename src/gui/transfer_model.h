@@ -50,8 +50,7 @@ public:
     int rowCount(const QModelIndex &parent = {}) const override;
     int columnCount(const QModelIndex &parent = {}) const override;
     QVariant data(const QModelIndex &index, int role) const override;
-    QVariant headerData(int section, Qt::Orientation orientation,
-                        int role) const override;
+    QVariant headerData(int section, Qt::Orientation orientation, int role) const override;
 
     /**
      * @brief Append a new transfer row.
@@ -89,8 +88,7 @@ class ProgressBarDelegate : public QStyledItemDelegate {
     Q_OBJECT
 public:
     using QStyledItemDelegate::QStyledItemDelegate;
-    void paint(QPainter *painter, const QStyleOptionViewItem &option,
-               const QModelIndex &index) const override;
+    void paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const override;
 };
 
 }  // namespace tftp::gui

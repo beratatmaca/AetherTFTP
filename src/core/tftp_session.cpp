@@ -16,10 +16,7 @@ struct TftpSession::ReadTask : public QRunnable {
     qint64 offset;
     int blockSize;
 
-    ReadTask(TftpSession *s, quint16 b, qint64 o, int sz)
-        : session(s), block(b), offset(o), blockSize(sz) {
-        setAutoDelete(true);
-    }
+    ReadTask(TftpSession *s, quint16 b, qint64 o, int sz) : session(s), block(b), offset(o), blockSize(sz) { setAutoDelete(true); }
 
     void run() override {
         QByteArray payload;
@@ -52,10 +49,7 @@ struct TftpSession::WriteTask : public QRunnable {
     quint16 block;
     QByteArray payload;
 
-    WriteTask(TftpSession *s, quint16 b, const QByteArray &p)
-        : session(s), block(b), payload(p) {
-        setAutoDelete(true);
-    }
+    WriteTask(TftpSession *s, quint16 b, const QByteArray &p) : session(s), block(b), payload(p) { setAutoDelete(true); }
 
     void run() override {
         bool ok = false;
@@ -81,31 +75,20 @@ struct TftpSession::WriteTask : public QRunnable {
     }
 };
 
-TftpSession::TftpSession(const QHostAddress &peer, quint16 peerPort,
-                         const Request &request, const QString &filePath,
-                         QObject *parent)
-    : QObject(parent),
-      m_peer(peer),
-      m_peerPort(peerPort),
-      m_request(request),
-      m_filePath(filePath),
-      m_isRead(request.op == OpCode::RRQ) {}
+TftpSession::TftpSession(const QHostAddress &peer, quint16 peerPort, const Request &request, const QString &filePath, QObject *parent)
+    : QObject(parent), m_peer(peer), m_peerPort(peerPort), m_request(request), m_filePath(filePath), m_isRead(request.op == OpCode::RRQ) {}
 
 TftpSession::~TftpSession() = default;
 
 bool TftpSession::start() {
     if (!m_singlePortMode) {
         m_socket = std::make_unique<QUdpSocket>(this);
-        QHostAddress bindAddr =
-            (m_peer.protocol() == QAbstractSocket::IPv6Protocol)
-                ? QHostAddress::AnyIPv6
-                : QHostAddress::AnyIPv4;
+        QHostAddress bindAddr = (m_peer.protocol() == QAbstractSocket::IPv6Protocol) ? QHostAddress::AnyIPv6 : QHostAddress::AnyIPv4;
         if (!m_socket->bind(bindAddr, 0)) {
             finish(false, QStringLiteral("Failed to bind transfer socket"));
             return false;
         }
-        connect(m_socket.get(), &QUdpSocket::readyRead, this,
-                &TftpSession::onReadyRead);
+        connect(m_socket.get(), &QUdpSocket::readyRead, this, &TftpSession::onReadyRead);
     }
 
     m_timer = new QTimer(this);
@@ -114,12 +97,10 @@ bool TftpSession::start() {
 
     m_sendTimer = new QTimer(this);
     m_sendTimer->setSingleShot(true);
-    connect(m_sendTimer, &QTimer::timeout, this,
-            &TftpSession::onSendTimerTimeout);
+    connect(m_sendTimer, &QTimer::timeout, this, &TftpSession::onSendTimerTimeout);
 
     if (m_request.mode != QLatin1String(kModeOctet)) {
-        sendError(ErrorCode::IllegalOperation,
-                  QStringLiteral("Only octet mode is supported"));
+        sendError(ErrorCode::IllegalOperation, QStringLiteral("Only octet mode is supported"));
         return true;
     }
 
@@ -127,20 +108,17 @@ bool TftpSession::start() {
 
     if (m_isRead) {
         if (!m_file->open(QIODevice::ReadOnly)) {
-            sendError(ErrorCode::FileNotFound,
-                      QStringLiteral("File not found"));
+            sendError(ErrorCode::FileNotFound, QStringLiteral("File not found"));
             return true;
         }
         m_totalBytes = m_file->size();
     } else {
         if (m_file->exists()) {
-            sendError(ErrorCode::FileAlreadyExists,
-                      QStringLiteral("File already exists"));
+            sendError(ErrorCode::FileAlreadyExists, QStringLiteral("File already exists"));
             return true;
         }
         if (!m_file->open(QIODevice::WriteOnly)) {
-            sendError(ErrorCode::AccessViolation,
-                      QStringLiteral("Cannot create file"));
+            sendError(ErrorCode::AccessViolation, QStringLiteral("Cannot create file"));
             return true;
         }
     }
@@ -165,19 +143,16 @@ Options TftpSession::negotiateOptions(qint64 fileSize) {
 
     if (m_request.options.contains(QLatin1String(kOptBlksize))) {
         bool ok = false;
-        int requested =
-            m_request.options.value(QLatin1String(kOptBlksize)).toInt(&ok);
+        int requested = m_request.options.value(QLatin1String(kOptBlksize)).toInt(&ok);
         if (ok) {
             m_blockSize = clampBlockSize(requested);
-            accepted.insert(QLatin1String(kOptBlksize),
-                            QString::number(m_blockSize));
+            accepted.insert(QLatin1String(kOptBlksize), QString::number(m_blockSize));
         }
     }
 
     if (m_request.options.contains(QLatin1String(kOptTimeout))) {
         bool ok = false;
-        int secs =
-            m_request.options.value(QLatin1String(kOptTimeout)).toInt(&ok);
+        int secs = m_request.options.value(QLatin1String(kOptTimeout)).toInt(&ok);
         if (ok && secs >= 1 && secs <= 255) {
             m_timeoutMs = secs * 1000;
             accepted.insert(QLatin1String(kOptTimeout), QString::number(secs));
@@ -186,16 +161,13 @@ Options TftpSession::negotiateOptions(qint64 fileSize) {
 
     if (m_request.options.contains(QLatin1String(kOptTsize))) {
         if (m_isRead && fileSize >= 0) {
-            accepted.insert(QLatin1String(kOptTsize),
-                            QString::number(fileSize));
+            accepted.insert(QLatin1String(kOptTsize), QString::number(fileSize));
         } else if (!m_isRead) {
             bool ok = false;
-            qint64 declared = m_request.options.value(QLatin1String(kOptTsize))
-                                  .toLongLong(&ok);
+            qint64 declared = m_request.options.value(QLatin1String(kOptTsize)).toLongLong(&ok);
             if (ok) {
                 m_totalBytes = declared;
-                accepted.insert(QLatin1String(kOptTsize),
-                                QString::number(declared));
+                accepted.insert(QLatin1String(kOptTsize), QString::number(declared));
             }
         }
     }
@@ -215,9 +187,7 @@ void TftpSession::onReadyRead() {
         m_socket->readDatagram(buf.data(), buf.size(), &sender, &senderPort);
 
         if (senderPort != m_peerPort || sender != m_peer) {
-            QByteArray stray =
-                buildError(ErrorCode::UnknownTransferId,
-                           QStringLiteral("Unknown transfer ID"));
+            QByteArray stray = buildError(ErrorCode::UnknownTransferId, QStringLiteral("Unknown transfer ID"));
             m_socket->writeDatagram(stray, sender, senderPort);
             continue;
         }
@@ -239,8 +209,7 @@ void TftpSession::processDatagram(const QByteArray &buf) {
         ErrorCode code;
         QString msg;
         parseError(buf, code, msg);
-        finish(false,
-               QStringLiteral("Peer error %1: %2").arg(int(code)).arg(msg));
+        finish(false, QStringLiteral("Peer error %1: %2").arg(int(code)).arg(msg));
         return;
     }
 
@@ -269,8 +238,7 @@ void TftpSession::sendPacketImmediate(const QByteArray &packet) {
     }
 }
 
-void TftpSession::sendPacketDeferred(const QByteArray &packet,
-                                     bool armRetrans) {
+void TftpSession::sendPacketDeferred(const QByteArray &packet, bool armRetrans) {
     if (m_timer) {
         m_timer->stop();
     }
@@ -313,8 +281,7 @@ qint64 TftpSession::requestSessionDelay(qint64 packetSize) {
     }
     qint64 elapsed = m_sessionTokenTimer.restart();
     m_sessionTokens += (double(elapsed) / 1000.0) * m_sessionLimit;
-    double maxTokens =
-        qMax<double>(double(m_blockSize) * 2.0, double(m_sessionLimit));
+    double maxTokens = qMax<double>(double(m_blockSize) * 2.0, double(m_sessionLimit));
     if (m_sessionTokens > maxTokens) {
         m_sessionTokens = maxTokens;
     }
@@ -323,8 +290,7 @@ qint64 TftpSession::requestSessionDelay(qint64 packetSize) {
         return 0;
     } else {
         double needed = double(packetSize) - m_sessionTokens;
-        qint64 delayMs =
-            qint64(std::ceil(needed * 1000.0 / double(m_sessionLimit)));
+        qint64 delayMs = qint64(std::ceil(needed * 1000.0 / double(m_sessionLimit)));
         m_sessionTokens -= packetSize;
         return delayMs;
     }
@@ -337,12 +303,10 @@ void TftpSession::sendDataBlock(quint16 block) {
         return;
 
     const qint64 offset = qint64(block - 1) * m_blockSize;
-    QThreadPool::globalInstance()->start(
-        new ReadTask(this, block, offset, m_blockSize));
+    QThreadPool::globalInstance()->start(new ReadTask(this, block, offset, m_blockSize));
 }
 
-void TftpSession::onDataBlockRead(quint16 block, const QByteArray &payload,
-                                  bool ok) {
+void TftpSession::onDataBlockRead(quint16 block, const QByteArray &payload, bool ok) {
     if (!ok || m_finished)
         return;
 
@@ -366,9 +330,7 @@ void TftpSession::handleAck(quint16 block) {
         return;
 
     m_retries = 0;
-    m_bytesTransferred = qMin<qint64>(
-        qint64(block) * m_blockSize,
-        m_totalBytes < 0 ? qint64(block) * m_blockSize : m_totalBytes);
+    m_bytesTransferred = qMin<qint64>(qint64(block) * m_blockSize, m_totalBytes < 0 ? qint64(block) * m_blockSize : m_totalBytes);
     emit progress(m_bytesTransferred, m_totalBytes);
 
     if (m_sentLastBlock) {

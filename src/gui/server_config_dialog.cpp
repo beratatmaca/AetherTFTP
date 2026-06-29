@@ -8,9 +8,7 @@
 
 namespace tftp::gui {
 
-ServerConfigDialog::ServerConfigDialog(quint16 port, const QString &rootDir,
-                                       int maxConcurrent, QWidget *parent)
-    : QDialog(parent) {
+ServerConfigDialog::ServerConfigDialog(quint16 port, const QString &rootDir, int maxConcurrent, QWidget *parent) : QDialog(parent) {
     setWindowTitle(tr("Server Configuration"));
     auto *layout = new QFormLayout(this);
 
@@ -23,8 +21,7 @@ ServerConfigDialog::ServerConfigDialog(quint16 port, const QString &rootDir,
     m_dirEdit = new QLineEdit(rootDir, this);
     dirLayout->addWidget(m_dirEdit);
     auto *browseButton = new QPushButton(tr("Browse..."), this);
-    connect(browseButton, &QPushButton::clicked, this,
-            &ServerConfigDialog::browseDir);
+    connect(browseButton, &QPushButton::clicked, this, &ServerConfigDialog::browseDir);
     dirLayout->addWidget(browseButton);
     layout->addRow(tr("Root Directory:"), dirLayout);
 
@@ -56,8 +53,7 @@ int ServerConfigDialog::maxConcurrent() const {
 }
 
 void ServerConfigDialog::browseDir() {
-    QString dir = QFileDialog::getExistingDirectory(
-        this, tr("Select Root Directory"), m_dirEdit->text());
+    QString dir = QFileDialog::getExistingDirectory(this, tr("Select Root Directory"), m_dirEdit->text());
     if (!dir.isEmpty()) {
         m_dirEdit->setText(dir);
     }

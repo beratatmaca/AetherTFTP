@@ -39,25 +39,18 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
     m_server = new TftpServer(this);
     connect(m_server, &TftpServer::logMessage, this, &MainWindow::appendLog);
-    connect(m_server, &TftpServer::transferStarted, this,
-            [this](const QString &name, bool isUpload) {
-                appendLog(QStringLiteral("Incoming %1: %2")
-                              .arg(isUpload ? QStringLiteral("upload")
-                                            : QStringLiteral("download"),
-                                   name));
-            });
+    connect(m_server, &TftpServer::transferStarted, this, [this](const QString &name, bool isUpload) {
+        appendLog(QStringLiteral("Incoming %1: %2").arg(isUpload ? QStringLiteral("upload") : QStringLiteral("download"), name));
+    });
 
     m_model = new TransferModel(this);
     m_view = new QTreeView(this);
     m_view->setModel(m_model);
     m_view->setRootIsDecorated(false);
     m_view->setAlternatingRowColors(true);
-    m_view->setItemDelegateForColumn(TransferModel::ColProgress,
-                                     new ProgressBarDelegate(m_view));
-    m_view->header()->setSectionResizeMode(TransferModel::ColName,
-                                           QHeaderView::Stretch);
-    m_view->header()->setSectionResizeMode(TransferModel::ColStatus,
-                                           QHeaderView::Stretch);
+    m_view->setItemDelegateForColumn(TransferModel::ColProgress, new ProgressBarDelegate(m_view));
+    m_view->header()->setSectionResizeMode(TransferModel::ColName, QHeaderView::Stretch);
+    m_view->header()->setSectionResizeMode(TransferModel::ColStatus, QHeaderView::Stretch);
 
     m_log = new QPlainTextEdit(this);
     m_log->setReadOnly(true);
@@ -101,12 +94,10 @@ QWidget *MainWindow::buildServerGroup() {
     m_serverStatusLabel->setObjectName(QStringLiteral("statusStopped"));
 
     m_serverToggleBtn = new QPushButton(QStringLiteral("Start Server"), box);
-    connect(m_serverToggleBtn, &QPushButton::clicked, this,
-            &MainWindow::toggleServer);
+    connect(m_serverToggleBtn, &QPushButton::clicked, this, &MainWindow::toggleServer);
 
     auto *settingsBtn = new QPushButton(QStringLiteral("Settings…"), box);
-    connect(settingsBtn, &QPushButton::clicked, this,
-            &MainWindow::configureServer);
+    connect(settingsBtn, &QPushButton::clicked, this, &MainWindow::configureServer);
 
     auto *btnRow = new QHBoxLayout;
     btnRow->addWidget(m_serverToggleBtn);
@@ -135,11 +126,9 @@ QWidget *MainWindow::buildClientGroup() {
     hostRow->addWidget(m_clientPortSpin);
 
     m_fileEdit = new QLineEdit(box);
-    m_fileEdit->setPlaceholderText(QStringLiteral(
-        "File (local path to upload, or remote name to download)"));
+    m_fileEdit->setPlaceholderText(QStringLiteral("File (local path to upload, or remote name to download)"));
     auto *browseBtn = new QPushButton(QStringLiteral("Browse…"), box);
-    connect(browseBtn, &QPushButton::clicked, this,
-            &MainWindow::browseLocalFile);
+    connect(browseBtn, &QPushButton::clicked, this, &MainWindow::browseLocalFile);
 
     auto *fileRow = new QHBoxLayout;
     fileRow->addWidget(m_fileEdit, 1);
@@ -149,8 +138,7 @@ QWidget *MainWindow::buildClientGroup() {
     uploadBtn->setObjectName(QStringLiteral("primaryButton"));
     connect(uploadBtn, &QPushButton::clicked, this, &MainWindow::startUpload);
     auto *downloadBtn = new QPushButton(QStringLiteral("Download"), box);
-    connect(downloadBtn, &QPushButton::clicked, this,
-            &MainWindow::startDownload);
+    connect(downloadBtn, &QPushButton::clicked, this, &MainWindow::startDownload);
 
     auto *actionRow = new QHBoxLayout;
     actionRow->addWidget(uploadBtn);
@@ -172,15 +160,12 @@ void MainWindow::toggleServer() {
         m_serverToggleBtn->setText(QStringLiteral("Start Server"));
         appendLog(QStringLiteral("Server stopped."));
     } else {
-        if (!m_server->listen(QHostAddress::AnyIPv4, m_serverPort,
-                              m_serverDir)) {
-            appendLog(QStringLiteral("Failed to start server: %1")
-                          .arg(m_server->lastError()));
+        if (!m_server->listen(QHostAddress::AnyIPv4, m_serverPort, m_serverDir)) {
+            appendLog(QStringLiteral("Failed to start server: %1").arg(m_server->lastError()));
             return;
         }
         m_serverRunning = true;
-        m_serverStatusLabel->setText(
-            QStringLiteral("Listening on port %1").arg(m_server->port()));
+        m_serverStatusLabel->setText(QStringLiteral("Listening on port %1").arg(m_server->port()));
         m_serverStatusLabel->setObjectName(QStringLiteral("statusRunning"));
         m_serverToggleBtn->setText(QStringLiteral("Stop Server"));
     }
@@ -201,19 +186,14 @@ void MainWindow::configureServer() {
     m_serverPort = dlg.port();
     m_serverDir = dlg.rootDir();
     m_maxConcurrent = dlg.maxConcurrent();
-    appendLog(
-        QStringLiteral("Server settings updated (port %1, dir %2, max %3).")
-            .arg(m_serverPort)
-            .arg(m_serverDir)
-            .arg(m_maxConcurrent));
+    appendLog(QStringLiteral("Server settings updated (port %1, dir %2, max %3).").arg(m_serverPort).arg(m_serverDir).arg(m_maxConcurrent));
 
     if (wasRunning)
         toggleServer();  // restart with the new settings.
 }
 
 void MainWindow::browseLocalFile() {
-    const QString file = QFileDialog::getOpenFileName(
-        this, QStringLiteral("Select file to upload"));
+    const QString file = QFileDialog::getOpenFileName(this, QStringLiteral("Select file to upload"));
     if (!file.isEmpty())
         m_fileEdit->setText(file);
 }
@@ -225,35 +205,26 @@ void MainWindow::startUpload() {
         appendLog(QStringLiteral("Upload needs both a host and a file."));
         return;
     }
-    startTransfer(true, host, quint16(m_clientPortSpin->value()), file,
-                  QFileInfo(file).fileName());
+    startTransfer(true, host, quint16(m_clientPortSpin->value()), file, QFileInfo(file).fileName());
 }
 
 void MainWindow::startDownload() {
     const QString host = m_hostEdit->text().trimmed();
     const QString remote = m_fileEdit->text().trimmed();
     if (host.isEmpty() || remote.isEmpty()) {
-        appendLog(QStringLiteral(
-            "Download needs both a host and a remote file name."));
+        appendLog(QStringLiteral("Download needs both a host and a remote file name."));
         return;
     }
-    const QString suggested =
-        QDir::current().filePath(QFileInfo(remote).fileName());
-    const QString dest = QFileDialog::getSaveFileName(
-        this, QStringLiteral("Save downloaded file as"), suggested);
+    const QString suggested = QDir::current().filePath(QFileInfo(remote).fileName());
+    const QString dest = QFileDialog::getSaveFileName(this, QStringLiteral("Save downloaded file as"), suggested);
     if (dest.isEmpty())
         return;
-    startTransfer(false, host, quint16(m_clientPortSpin->value()), dest,
-                  remote);
+    startTransfer(false, host, quint16(m_clientPortSpin->value()), dest, remote);
 }
 
-void MainWindow::startTransfer(bool isUpload, const QString &host, quint16 port,
-                               const QString &localFile,
-                               const QString &remoteName) {
+void MainWindow::startTransfer(bool isUpload, const QString &host, quint16 port, const QString &localFile, const QString &remoteName) {
     if (activeTransfers() >= m_maxConcurrent) {
-        appendLog(QStringLiteral(
-                      "Transfer limit reached (%1). Wait for one to finish.")
-                      .arg(m_maxConcurrent));
+        appendLog(QStringLiteral("Transfer limit reached (%1). Wait for one to finish.").arg(m_maxConcurrent));
         return;
     }
 
@@ -263,32 +234,20 @@ void MainWindow::startTransfer(bool isUpload, const QString &host, quint16 port,
     m_rowOf.insert(client, row);
 
     connect(client, &TftpClient::progress, this,
-            [this, client](qint64 done, qint64 total) {
-                m_model->updateProgress(m_rowOf.value(client, -1), done, total);
-            });
-    connect(client, &TftpClient::errorOccurred, this,
-            [this, client](const QString &message) {
-                m_lastError.insert(client, message);
-            });
-    connect(client, &TftpClient::transferFinished, this,
-            [this, client, remoteName](bool ok) {
-                const int finishedRow = m_rowOf.value(client, -1);
-                const QString err = m_lastError.value(client);
-                m_model->setFinished(finishedRow, ok, err);
-                appendLog(QStringLiteral("%1 %2%3").arg(
-                    remoteName,
-                    ok ? QStringLiteral("completed") : QStringLiteral("failed"),
-                    (!ok && !err.isEmpty()) ? QStringLiteral(": %1").arg(err)
-                                            : QString()));
-                m_rowOf.remove(client);
-                m_lastError.remove(client);
-                client->deleteLater();
-            });
+            [this, client](qint64 done, qint64 total) { m_model->updateProgress(m_rowOf.value(client, -1), done, total); });
+    connect(client, &TftpClient::errorOccurred, this, [this, client](const QString &message) { m_lastError.insert(client, message); });
+    connect(client, &TftpClient::transferFinished, this, [this, client, remoteName](bool ok) {
+        const int finishedRow = m_rowOf.value(client, -1);
+        const QString err = m_lastError.value(client);
+        m_model->setFinished(finishedRow, ok, err);
+        appendLog(QStringLiteral("%1 %2%3").arg(remoteName, ok ? QStringLiteral("completed") : QStringLiteral("failed"),
+                                                (!ok && !err.isEmpty()) ? QStringLiteral(": %1").arg(err) : QString()));
+        m_rowOf.remove(client);
+        m_lastError.remove(client);
+        client->deleteLater();
+    });
 
-    appendLog(QStringLiteral("%1 %2 : %3")
-                  .arg(isUpload ? QStringLiteral("Uploading")
-                                : QStringLiteral("Downloading"),
-                       remoteName, peer));
+    appendLog(QStringLiteral("%1 %2 : %3").arg(isUpload ? QStringLiteral("Uploading") : QStringLiteral("Downloading"), remoteName, peer));
 
     if (isUpload)
         client->uploadFile(host, port, localFile, remoteName);
@@ -301,8 +260,7 @@ int MainWindow::activeTransfers() const {
 }
 
 void MainWindow::appendLog(const QString &message) {
-    m_log->appendPlainText(QStringLiteral("[%1] %2").arg(
-        QTime::currentTime().toString(QStringLiteral("HH:mm:ss")), message));
+    m_log->appendPlainText(QStringLiteral("[%1] %2").arg(QTime::currentTime().toString(QStringLiteral("HH:mm:ss")), message));
 }
 
 void MainWindow::dragEnterEvent(QDragEnterEvent *event) {
@@ -313,8 +271,7 @@ void MainWindow::dragEnterEvent(QDragEnterEvent *event) {
 void MainWindow::dropEvent(QDropEvent *event) {
     const QString host = m_hostEdit->text().trimmed();
     if (host.isEmpty()) {
-        appendLog(
-            QStringLiteral("Enter a host before dropping files to upload."));
+        appendLog(QStringLiteral("Enter a host before dropping files to upload."));
         return;
     }
     const quint16 port = quint16(m_clientPortSpin->value());
@@ -331,25 +288,13 @@ QWidget *MainWindow::buildMetricsGroup() {
     auto *box = new QGroupBox(QStringLiteral("Metrics Dashboard"), this);
     auto *layout = new QVBoxLayout(box);
 
-    m_metricsActiveLabel = new QLabel(
-        QStringLiteral(
-            "Active Sessions: <b><font color='#06B6D4'>0</font></b>"),
-        box);
-    m_metricsBytesLabel = new QLabel(
-        QStringLiteral("Transferred: <b><font color='#10B981'>0 B</font></b>"),
-        box);
-    m_metricsTransfersLabel = new QLabel(
-        QStringLiteral("Transfers (S/F): <b><font color='#10B981'>0</font></b> "
-                       "/ <b><font color='#EF4444'>0</font></b>"),
-        box);
-    m_metricsRetransLabel = new QLabel(
-        QStringLiteral(
-            "Retransmissions: <b><font color='#F59E0B'>0</font></b>"),
-        box);
-    m_metricsSpeedLabel = new QLabel(
-        QStringLiteral(
-            "Current Speed: <b><font color='#06B6D4'>0 B/s</font></b>"),
-        box);
+    m_metricsActiveLabel = new QLabel(QStringLiteral("Active Sessions: <b><font color='#06B6D4'>0</font></b>"), box);
+    m_metricsBytesLabel = new QLabel(QStringLiteral("Transferred: <b><font color='#10B981'>0 B</font></b>"), box);
+    m_metricsTransfersLabel = new QLabel(QStringLiteral("Transfers (S/F): <b><font color='#10B981'>0</font></b> "
+                                                        "/ <b><font color='#EF4444'>0</font></b>"),
+                                         box);
+    m_metricsRetransLabel = new QLabel(QStringLiteral("Retransmissions: <b><font color='#F59E0B'>0</font></b>"), box);
+    m_metricsSpeedLabel = new QLabel(QStringLiteral("Current Speed: <b><font color='#06B6D4'>0 B/s</font></b>"), box);
 
     layout->addWidget(m_metricsActiveLabel);
     layout->addWidget(m_metricsBytesLabel);
@@ -387,27 +332,14 @@ void MainWindow::updateMetrics() {
         return QString::number(mb, 'f', 1) + QStringLiteral(" MB");
     };
 
-    m_metricsActiveLabel->setText(
-        QStringLiteral(
-            "Active Sessions: <b><font color='#06B6D4'>%1</font></b>")
-            .arg(active));
-    m_metricsBytesLabel->setText(
-        QStringLiteral("Transferred: <b><font color='#10B981'>%1</font></b>")
-            .arg(formatBytes(bytes)));
-    m_metricsTransfersLabel->setText(
-        QStringLiteral(
-            "Transfers (S/F): <b><font color='#10B981'>%1</font></b> / "
-            "<b><font color='#EF4444'>%2</font></b>")
-            .arg(success)
-            .arg(failure));
-    m_metricsRetransLabel->setText(
-        QStringLiteral(
-            "Retransmissions: <b><font color='#F59E0B'>%1</font></b>")
-            .arg(retrans));
-    m_metricsSpeedLabel->setText(
-        QStringLiteral(
-            "Current Speed: <b><font color='#06B6D4'>%1/s</font></b>")
-            .arg(formatBytes(qint64(speed))));
+    m_metricsActiveLabel->setText(QStringLiteral("Active Sessions: <b><font color='#06B6D4'>%1</font></b>").arg(active));
+    m_metricsBytesLabel->setText(QStringLiteral("Transferred: <b><font color='#10B981'>%1</font></b>").arg(formatBytes(bytes)));
+    m_metricsTransfersLabel->setText(QStringLiteral("Transfers (S/F): <b><font color='#10B981'>%1</font></b> / "
+                                                    "<b><font color='#EF4444'>%2</font></b>")
+                                         .arg(success)
+                                         .arg(failure));
+    m_metricsRetransLabel->setText(QStringLiteral("Retransmissions: <b><font color='#F59E0B'>%1</font></b>").arg(retrans));
+    m_metricsSpeedLabel->setText(QStringLiteral("Current Speed: <b><font color='#06B6D4'>%1/s</font></b>").arg(formatBytes(qint64(speed))));
 }
 
 }  // namespace tftp::gui

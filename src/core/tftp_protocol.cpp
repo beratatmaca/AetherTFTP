@@ -41,8 +41,7 @@ QList<QByteArray> splitCStrings(const QByteArray &buf, int offset, bool &ok) {
 }
 
 quint16 readU16(const QByteArray &buf, int offset) {
-    return (static_cast<quint8>(buf[offset]) << 8) |
-           static_cast<quint8>(buf[offset + 1]);
+    return (static_cast<quint8>(buf[offset]) << 8) | static_cast<quint8>(buf[offset + 1]);
 }
 
 void appendU16(QByteArray &out, quint16 value) {
@@ -52,8 +51,7 @@ void appendU16(QByteArray &out, quint16 value) {
 
 }  // namespace
 
-QByteArray buildRequest(OpCode op, const QString &filename, const QString &mode,
-                        const Options &options) {
+QByteArray buildRequest(OpCode op, const QString &filename, const QString &mode, const Options &options) {
     QByteArray out;
     appendU16(out, static_cast<quint16>(op));
     appendCString(out, filename);
@@ -96,8 +94,7 @@ bool peekOpCode(const QByteArray &datagram, OpCode &outOp) {
     if (datagram.size() < 2)
         return false;
     quint16 raw = readU16(datagram, 0);
-    if (raw < static_cast<quint16>(OpCode::RRQ) ||
-        raw > static_cast<quint16>(OpCode::OACK))
+    if (raw < static_cast<quint16>(OpCode::RRQ) || raw > static_cast<quint16>(OpCode::OACK))
         return false;
     outOp = static_cast<OpCode>(raw);
     return true;
@@ -107,8 +104,7 @@ bool parseRequest(const QByteArray &datagram, Request &out) {
     if (datagram.size() < 2)
         return false;
     quint16 raw = readU16(datagram, 0);
-    if (raw != static_cast<quint16>(OpCode::RRQ) &&
-        raw != static_cast<quint16>(OpCode::WRQ))
+    if (raw != static_cast<quint16>(OpCode::RRQ) && raw != static_cast<quint16>(OpCode::WRQ))
         return false;
     out.op = static_cast<OpCode>(raw);
 
@@ -124,14 +120,12 @@ bool parseRequest(const QByteArray &datagram, Request &out) {
     // ignored (treated as absent) rather than rejected.
     out.options.clear();
     for (int i = 2; i + 1 < fields.size(); i += 2) {
-        out.options.insert(QString::fromUtf8(fields[i]).toLower(),
-                           QString::fromUtf8(fields[i + 1]));
+        out.options.insert(QString::fromUtf8(fields[i]).toLower(), QString::fromUtf8(fields[i + 1]));
     }
     return true;
 }
 
-bool parseData(const QByteArray &datagram, quint16 &outBlock,
-               QByteArray &outPayload) {
+bool parseData(const QByteArray &datagram, quint16 &outBlock, QByteArray &outPayload) {
     if (datagram.size() < 4)
         return false;
     if (readU16(datagram, 0) != static_cast<quint16>(OpCode::DATA))
@@ -150,8 +144,7 @@ bool parseAck(const QByteArray &datagram, quint16 &outBlock) {
     return true;
 }
 
-bool parseError(const QByteArray &datagram, ErrorCode &outCode,
-                QString &outMessage) {
+bool parseError(const QByteArray &datagram, ErrorCode &outCode, QString &outMessage) {
     if (datagram.size() < 4)
         return false;
     if (readU16(datagram, 0) != static_cast<quint16>(OpCode::ERROR))
@@ -174,8 +167,7 @@ bool parseOack(const QByteArray &datagram, Options &outOptions) {
         return false;
     outOptions.clear();
     for (int i = 0; i + 1 < fields.size(); i += 2) {
-        outOptions.insert(QString::fromUtf8(fields[i]).toLower(),
-                          QString::fromUtf8(fields[i + 1]));
+        outOptions.insert(QString::fromUtf8(fields[i]).toLower(), QString::fromUtf8(fields[i + 1]));
     }
     return true;
 }

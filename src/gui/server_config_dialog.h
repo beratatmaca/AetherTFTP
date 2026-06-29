@@ -25,8 +25,7 @@ public:
      * @param maxConcurrent Initial concurrent-transfer cap.
      * @param parent Optional parent widget.
      */
-    ServerConfigDialog(quint16 port, const QString &rootDir, int maxConcurrent,
-                       QWidget *parent = nullptr);
+    ServerConfigDialog(quint16 port, const QString &rootDir, int maxConcurrent, QWidget *parent = nullptr);
 
     /** @return The chosen listen port. */
     quint16 port() const;

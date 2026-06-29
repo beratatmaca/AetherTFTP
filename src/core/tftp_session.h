@@ -37,9 +37,7 @@ public:
      * @param filePath Sandbox-resolved absolute path to read or write.
      * @param parent Optional QObject parent.
      */
-    TftpSession(const QHostAddress &peer, quint16 peerPort,
-                const Request &request, const QString &filePath,
-                QObject *parent = nullptr);
+    TftpSession(const QHostAddress &peer, quint16 peerPort, const Request &request, const QString &filePath, QObject *parent = nullptr);
     ~TftpSession() override;
 
     /**
@@ -150,8 +148,7 @@ private:
     bool m_singlePortMode = false;
 
     qint64 m_bytesTransferred = 0;
-    qint64 m_totalBytes =
-        -1;  ///< Known for RRQ; -1 for WRQ unless tsize given.
+    qint64 m_totalBytes = -1;  ///< Known for RRQ; -1 for WRQ unless tsize given.
 
     qint64 m_sessionLimit = 0;
     double m_sessionTokens = 0;

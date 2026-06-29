@@ -14,8 +14,7 @@ constexpr int kRequestTimeoutMs = 5000;      ///< Per-connection deadline.
 constexpr int kMaxConnections = 64;          ///< Concurrent connection cap.
 }  // namespace
 
-MetricsExporter::MetricsExporter(TftpServer *server, QObject *parent)
-    : QTcpServer(parent), m_server(server) {}
+MetricsExporter::MetricsExporter(TftpServer *server, QObject *parent) : QTcpServer(parent), m_server(server) {}
 
 void MetricsExporter::incomingConnection(qintptr socketDescriptor) {
     auto *socket = new QTcpSocket(this);
@@ -32,8 +31,7 @@ void MetricsExporter::incomingConnection(qintptr socketDescriptor) {
 
     // Shed load: refuse to track more than kMaxConnections at once.
     if (m_connections.size() >= kMaxConnections) {
-        sendResponse(socket, 503, "Service Unavailable", "text/plain",
-                     "too many connections\n");
+        sendResponse(socket, 503, "Service Unavailable", "text/plain", "too many connections\n");
         return;
     }
 
@@ -46,8 +44,7 @@ void MetricsExporter::incomingConnection(qintptr socketDescriptor) {
         auto it = m_connections.find(socket);
         if (it == m_connections.end() || it->responded)
             return;  // Already answered or gone.
-        sendResponse(socket, 408, "Request Timeout", "text/plain",
-                     "request timeout\n");
+        sendResponse(socket, 408, "Request Timeout", "text/plain", "request timeout\n");
     });
     deadline->start(kRequestTimeoutMs);
 
@@ -60,8 +57,7 @@ void MetricsExporter::incomingConnection(qintptr socketDescriptor) {
         it->buffer.append(socket->readAll());
 
         if (it->buffer.size() > kMaxRequestBytes) {
-            sendResponse(socket, 431, "Request Header Fields Too Large",
-                         "text/plain", "request too large\n");
+            sendResponse(socket, 431, "Request Header Fields Too Large", "text/plain", "request too large\n");
             return;
         }
 
@@ -73,12 +69,10 @@ void MetricsExporter::incomingConnection(qintptr socketDescriptor) {
     });
 }
 
-void MetricsExporter::handleRequest(QTcpSocket *socket,
-                                    const QByteArray &headerBlock) {
+void MetricsExporter::handleRequest(QTcpSocket *socket, const QByteArray &headerBlock) {
     // Request line: METHOD SP PATH SP VERSION
     const qsizetype lineEnd = headerBlock.indexOf("\r\n");
-    const QByteArray requestLine =
-        lineEnd < 0 ? headerBlock : headerBlock.left(lineEnd);
+    const QByteArray requestLine = lineEnd < 0 ? headerBlock : headerBlock.left(lineEnd);
     const QList<QByteArray> parts = requestLine.split(' ');
     if (parts.size() < 2) {
         sendResponse(socket, 400, "Bad Request", "text/plain", "bad request\n");
@@ -92,8 +86,7 @@ void MetricsExporter::handleRequest(QTcpSocket *socket,
         path = path.left(query);
 
     if (method != "GET") {
-        sendResponse(socket, 405, "Method Not Allowed", "text/plain",
-                     "method not allowed\n");
+        sendResponse(socket, 405, "Method Not Allowed", "text/plain", "method not allowed\n");
         return;
     }
     if (path != "/metrics" && path != "/") {
@@ -101,18 +94,14 @@ void MetricsExporter::handleRequest(QTcpSocket *socket,
         return;
     }
     if (!m_server) {
-        sendResponse(socket, 503, "Service Unavailable", "text/plain",
-                     "metrics source unavailable\n");
+        sendResponse(socket, 503, "Service Unavailable", "text/plain", "metrics source unavailable\n");
         return;
     }
 
-    sendResponse(socket, 200, "OK", "text/plain; version=0.0.4; charset=utf-8",
-                 m_server->getMetricsFormatted().toUtf8());
+    sendResponse(socket, 200, "OK", "text/plain; version=0.0.4; charset=utf-8", m_server->getMetricsFormatted().toUtf8());
 }
 
-void MetricsExporter::sendResponse(QTcpSocket *socket, int statusCode,
-                                   const QByteArray &reason,
-                                   const QByteArray &contentType,
+void MetricsExporter::sendResponse(QTcpSocket *socket, int statusCode, const QByteArray &reason, const QByteArray &contentType,
                                    const QByteArray &body) {
     if (auto it = m_connections.find(socket); it != m_connections.end()) {
         if (it->responded)
@@ -127,9 +116,7 @@ void MetricsExporter::sendResponse(QTcpSocket *socket, int statusCode,
     response.append(reason);
     response.append("\r\n");
     response.append("Content-Type: ").append(contentType).append("\r\n");
-    response.append("Content-Length: ")
-        .append(QByteArray::number(body.size()))
-        .append("\r\n");
+    response.append("Content-Length: ").append(QByteArray::number(body.size())).append("\r\n");
     response.append("Connection: close\r\n\r\n");
     response.append(body);
 

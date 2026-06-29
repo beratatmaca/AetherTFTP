@@ -42,17 +42,12 @@ enum class ErrorCode : quint8 {
     OptionRefused = 8,  ///< Terminate option negotiation (RFC 2347).
 };
 
-constexpr const char *kModeOctet =
-    "octet";  ///< Octet (binary) mode, RFC 1350 §1.
-constexpr const char *kModeNetascii =
-    "netascii";  ///< netascii mode (out of scope).
+constexpr const char *kModeOctet = "octet";        ///< Octet (binary) mode, RFC 1350 §1.
+constexpr const char *kModeNetascii = "netascii";  ///< netascii mode (out of scope).
 
-constexpr const char *kOptBlksize =
-    "blksize";  ///< Blocksize option key (RFC 2348).
-constexpr const char *kOptTimeout =
-    "timeout";  ///< Timeout option key (RFC 2349).
-constexpr const char *kOptTsize =
-    "tsize";  ///< Transfer-size option key (RFC 2349).
+constexpr const char *kOptBlksize = "blksize";  ///< Blocksize option key (RFC 2348).
+constexpr const char *kOptTimeout = "timeout";  ///< Timeout option key (RFC 2349).
+constexpr const char *kOptTsize = "tsize";      ///< Transfer-size option key (RFC 2349).
 
 constexpr int kDefaultBlockSize = 512;  ///< RFC 1350 fixed block size.
 constexpr int kMinBlockSize = 8;        ///< RFC 2348 lower bound.
@@ -86,8 +81,7 @@ struct Request {
  * @param options Optional RFC 2347 option set to append.
  * @return The ready-to-send datagram payload.
  */
-QByteArray buildRequest(OpCode op, const QString &filename, const QString &mode,
-                        const Options &options = {});
+QByteArray buildRequest(OpCode op, const QString &filename, const QString &mode, const Options &options = {});
 
 /**
  * @brief Serialise a DATA packet.
@@ -146,8 +140,7 @@ bool parseRequest(const QByteArray &datagram, Request &out);
  * @param[out] outPayload Receives the block payload.
  * @return @c true on success, @c false if malformed.
  */
-bool parseData(const QByteArray &datagram, quint16 &outBlock,
-               QByteArray &outPayload);
+bool parseData(const QByteArray &datagram, quint16 &outBlock, QByteArray &outPayload);
 
 /**
  * @brief Parse an ACK packet.
@@ -164,8 +157,7 @@ bool parseAck(const QByteArray &datagram, quint16 &outBlock);
  * @param[out] outMessage Receives the error message (may be empty).
  * @return @c true on success, @c false if malformed.
  */
-bool parseError(const QByteArray &datagram, ErrorCode &outCode,
-                QString &outMessage);
+bool parseError(const QByteArray &datagram, ErrorCode &outCode, QString &outMessage);
 
 /**
  * @brief Parse an OACK packet's option set (RFC 2347).

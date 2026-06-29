@@ -41,8 +41,7 @@ public:
      * @param rootDir Directory whose files are served / written.
      * @return @c true on success; on failure see @ref lastError().
      */
-    bool listen(const QHostAddress &address, quint16 port,
-                const QString &rootDir);
+    bool listen(const QHostAddress &address, quint16 port, const QString &rootDir);
 
     /** @brief Close the listening socket and stop accepting requests. */
     void close();
@@ -96,8 +95,7 @@ public:
 
     /** @brief Write a UDP datagram from the server socket (used by sessions in
      * single-port mode). */
-    void sendSessionPacket(const QByteArray &packet,
-                           const QHostAddress &address, quint16 port);
+    void sendSessionPacket(const QByteArray &packet, const QHostAddress &address, quint16 port);
 
     /** @brief Set the global bandwidth limit in bytes per second (0 means
      * unlimited). */
@@ -121,10 +119,8 @@ public:
     bool isJsonLoggingEnabled() const { return m_jsonLoggingEnabled; }
 
     /** @brief Write log events in structured JSON format or plain text. */
-    void logEvent(const QString &eventType, const QString &sessionId,
-                  const QString &clientIp, const QString &fileName,
-                  int blockCount, const QString &status,
-                  const QString &message = QString());
+    void logEvent(const QString &eventType, const QString &sessionId, const QString &clientIp, const QString &fileName, int blockCount,
+                  const QString &status, const QString &message = QString());
 
     /** @brief Format server metrics for Prometheus exporter. */
     QString getMetricsFormatted() const;
@@ -137,9 +133,7 @@ public:
      *        remote scraping.
      * @return @c true if the listener bound successfully.
      */
-    bool startMetricsServer(
-        quint16 port,
-        const QHostAddress &address = QHostAddress(QHostAddress::LocalHost));
+    bool startMetricsServer(quint16 port, const QHostAddress &address = QHostAddress(QHostAddress::LocalHost));
     /** @brief Stop the metrics exporter server. */
     void stopMetricsServer();
     /** @return The metrics server port, or 0 if not running. */
@@ -159,8 +153,7 @@ signals:
      * @param ok @c true on success.
      * @param message Failure cause when @p ok is @c false.
      */
-    void transferFinished(const QString &filename, bool ok,
-                          const QString &message);
+    void transferFinished(const QString &filename, bool ok, const QString &message);
 
     /**
      * @brief Emitted for human-readable diagnostic log lines.

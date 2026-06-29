@@ -48,8 +48,7 @@ private:
      * @param isPut @c true for upload (WRQ); @c false for download (RRQ).
      * @return A process exit code.
      */
-    static int runTransfer(QCommandLineParser &parser, quint16 port,
-                           bool isPut);
+    static int runTransfer(QCommandLineParser &parser, quint16 port, bool isPut);
 };
 
 }  // namespace tftp

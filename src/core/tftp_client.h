@@ -59,8 +59,7 @@ public:
      * @param remoteFile Remote file name to request (RRQ).
      * @param localPath Local path to write the downloaded data to.
      */
-    void downloadFile(const QString &host, quint16 port,
-                      const QString &remoteFile, const QString &localPath);
+    void downloadFile(const QString &host, quint16 port, const QString &remoteFile, const QString &localPath);
 
     /**
      * @brief Upload @p localPath to @p host as @p remoteFile.
@@ -69,8 +68,7 @@ public:
      * @param localPath Local file to read and send.
      * @param remoteFile Remote file name to create (WRQ).
      */
-    void uploadFile(const QString &host, quint16 port, const QString &localPath,
-                    const QString &remoteFile);
+    void uploadFile(const QString &host, quint16 port, const QString &localPath, const QString &remoteFile);
 
     /** @return @c true while a transfer is in progress. */
     bool isRunning() const { return m_running; }
@@ -105,8 +103,7 @@ private:
     /** @brief Direction of the active transfer. */
     enum class Mode { Idle, Download, Upload };
 
-    bool begin(Mode mode, const QString &host, quint16 port,
-               const QString &remoteFile, const QString &localPath);
+    bool begin(Mode mode, const QString &host, quint16 port, const QString &remoteFile, const QString &localPath);
     void sendInitialRequest();
     void applyOack(const Options &options);
 
@@ -142,7 +139,7 @@ private:
     QByteArray m_lastPacket;  ///< Last datagram sent, for retransmission.
     bool m_optionsRequested = false;
     bool m_awaitingFirstReply = false;  ///< Expecting OACK or first DATA/ACK.
-    bool m_lastBlockSent = false;  ///< Upload: final short block dispatched.
+    bool m_lastBlockSent = false;       ///< Upload: final short block dispatched.
 
     qint64 m_bytesTransferred = 0;
     qint64 m_totalBytes = -1;

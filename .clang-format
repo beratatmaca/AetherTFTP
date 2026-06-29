@@ -6,7 +6,7 @@ IndentWidth: 4
 ContinuationIndentWidth: 4
 TabWidth: 4
 UseTab: Never
-ColumnLimit: 80
+ColumnLimit: 140
 AccessModifierOffset: -4
 NamespaceIndentation: None
 PointerAlignment: Right

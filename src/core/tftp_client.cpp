@@ -12,20 +12,15 @@ TftpClient::TftpClient(QObject *parent) : QObject(parent) {}
 
 TftpClient::~TftpClient() = default;
 
-void TftpClient::downloadFile(const QString &host, quint16 port,
-                              const QString &remoteFile,
-                              const QString &localPath) {
+void TftpClient::downloadFile(const QString &host, quint16 port, const QString &remoteFile, const QString &localPath) {
     begin(Mode::Download, host, port, remoteFile, localPath);
 }
 
-void TftpClient::uploadFile(const QString &host, quint16 port,
-                            const QString &localPath,
-                            const QString &remoteFile) {
+void TftpClient::uploadFile(const QString &host, quint16 port, const QString &localPath, const QString &remoteFile) {
     begin(Mode::Upload, host, port, remoteFile, localPath);
 }
 
-bool TftpClient::begin(Mode mode, const QString &host, quint16 port,
-                       const QString &remoteFile, const QString &localPath) {
+bool TftpClient::begin(Mode mode, const QString &host, quint16 port, const QString &remoteFile, const QString &localPath) {
     if (m_running) {
         fail(QStringLiteral("A transfer is already in progress"));
         return false;
@@ -59,30 +54,24 @@ bool TftpClient::begin(Mode mode, const QString &host, quint16 port,
     m_file = std::make_unique<QFile>(localPath);
     if (mode == Mode::Download) {
         if (!m_file->open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-            fail(QStringLiteral("Cannot open local file for writing: %1")
-                     .arg(localPath));
+            fail(QStringLiteral("Cannot open local file for writing: %1").arg(localPath));
             return false;
         }
     } else {
         if (!m_file->open(QIODevice::ReadOnly)) {
-            fail(QStringLiteral("Cannot open local file for reading: %1")
-                     .arg(localPath));
+            fail(QStringLiteral("Cannot open local file for reading: %1").arg(localPath));
             return false;
         }
         m_totalBytes = m_file->size();
     }
 
     m_socket = std::make_unique<QUdpSocket>(this);
-    QHostAddress bindAddr =
-        (m_serverAddr.protocol() == QAbstractSocket::IPv6Protocol)
-            ? QHostAddress::AnyIPv6
-            : QHostAddress::AnyIPv4;
+    QHostAddress bindAddr = (m_serverAddr.protocol() == QAbstractSocket::IPv6Protocol) ? QHostAddress::AnyIPv6 : QHostAddress::AnyIPv4;
     if (!m_socket->bind(bindAddr, 0)) {
         fail(QStringLiteral("Cannot bind client socket"));
         return false;
     }
-    connect(m_socket.get(), &QUdpSocket::readyRead, this,
-            &TftpClient::onReadyRead);
+    connect(m_socket.get(), &QUdpSocket::readyRead, this, &TftpClient::onReadyRead);
 
     m_timer = new QTimer(this);
     m_timer->setSingleShot(true);
@@ -97,8 +86,7 @@ void TftpClient::sendInitialRequest() {
     Options opts;
     m_optionsRequested = false;
     if (m_requestedBlockSize != kDefaultBlockSize) {
-        opts.insert(QLatin1String(kOptBlksize),
-                    QString::number(clampBlockSize(m_requestedBlockSize)));
+        opts.insert(QLatin1String(kOptBlksize), QString::number(clampBlockSize(m_requestedBlockSize)));
         m_optionsRequested = true;
     }
     if (m_mode == Mode::Upload) {
@@ -114,8 +102,7 @@ void TftpClient::sendInitialRequest() {
     }
 
     const OpCode op = (m_mode == Mode::Download) ? OpCode::RRQ : OpCode::WRQ;
-    m_lastPacket =
-        buildRequest(op, m_remoteFile, QLatin1String(kModeOctet), opts);
+    m_lastPacket = buildRequest(op, m_remoteFile, QLatin1String(kModeOctet), opts);
     m_awaitingFirstReply = true;
     m_socket->writeDatagram(m_lastPacket, m_serverAddr, m_serverPort);
     armRetransmit();
@@ -128,8 +115,7 @@ void TftpClient::applyOack(const Options &options) {
         if (ok)
             m_blockSize = clampBlockSize(bs);
     }
-    if (options.contains(QLatin1String(kOptTsize)) &&
-        m_mode == Mode::Download) {
+    if (options.contains(QLatin1String(kOptTsize)) && m_mode == Mode::Download) {
         bool ok = false;
         qint64 ts = options.value(QLatin1String(kOptTsize)).toLongLong(&ok);
         if (ok)
@@ -152,8 +138,7 @@ void TftpClient::onReadyRead() {
             m_tidLocked = true;
         } else if (senderPort != m_serverPort) {
             // Stray datagram from an unknown TID — reply with an error, ignore.
-            QByteArray err = buildError(ErrorCode::UnknownTransferId,
-                                        QStringLiteral("Unknown transfer ID"));
+            QByteArray err = buildError(ErrorCode::UnknownTransferId, QStringLiteral("Unknown transfer ID"));
             m_socket->writeDatagram(err, sender, senderPort);
             continue;
         }
@@ -180,8 +165,7 @@ void TftpClient::onReadyRead() {
                     // ACK block 0 to start the data flow.
                     m_block = 0;
                     m_lastPacket = buildAck(0);
-                    m_socket->writeDatagram(m_lastPacket, m_serverAddr,
-                                            m_serverPort);
+                    m_socket->writeDatagram(m_lastPacket, m_serverAddr, m_serverPort);
                     armRetransmit();
                 } else {
                     // Upload: OACK clears us to send block 1.
@@ -266,9 +250,7 @@ void TftpClient::handleAck(quint16 block) {
         return;  // Stale/duplicate ACK.
 
     m_retries = 0;
-    m_bytesTransferred = qMin<qint64>(
-        qint64(block) * m_blockSize,
-        m_totalBytes < 0 ? qint64(block) * m_blockSize : m_totalBytes);
+    m_bytesTransferred = qMin<qint64>(qint64(block) * m_blockSize, m_totalBytes < 0 ? qint64(block) * m_blockSize : m_totalBytes);
     emit progress(m_bytesTransferred, m_totalBytes);
 
     if (m_lastBlockSent) {
