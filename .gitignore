@@ -38,3 +38,5 @@ build-*/
 CMakeUserPresets.json
 # Per-user VS Code MCP server config (machine-specific)
 .vscode/mcp.json
+.claude/
+CLAUDE.md

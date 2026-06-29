@@ -65,7 +65,7 @@ void TFTPProtocolTest::initTestCase() {
     m_server = new TftpServer(this);
     // Port 0 lets the OS pick a free port — avoids privileged-port and
     // collision problems in CI.
-    QVERIFY(m_server->listen(QHostAddress::LocalHost, 0, m_serverDir.path()));
+    QVERIFY(m_server->listen(QHostAddress(QStringLiteral("127.0.0.1")), 0, m_serverDir.path()));
     m_port = m_server->port();
     QVERIFY(m_port != 0);
 }
@@ -354,7 +354,9 @@ void TFTPProtocolTest::testSymlinkPathTraversal() {
         m_serverDir.path() + QStringLiteral("/link_to_secret.txt");
 #ifdef Q_OS_WIN
     if (!QFile::link(outsideFile.fileName(), symlinkPath)) {
-        QSKIP("Symlink creation is not permitted or supported on this Windows host (requires developer mode / admin privileges).");
+        QSKIP(
+            "Symlink creation is not permitted or supported on this Windows "
+            "host (requires developer mode / admin privileges).");
     }
 #else
     QVERIFY(QFile::link(outsideFile.fileName(), symlinkPath));
@@ -374,7 +376,9 @@ void TFTPProtocolTest::testSymlinkPathTraversal() {
 
 void TFTPProtocolTest::testIpv6Binding() {
 #ifdef Q_OS_WIN
-    QSKIP("IPv6 loopback testing is skipped on Windows due to CI virtual environment network routing limitations.");
+    QSKIP(
+        "IPv6 loopback testing is skipped on Windows due to CI virtual "
+        "environment network routing limitations.");
 #else
     TftpServer ipv6Server;
     // Bind to LocalHostIPv6 (::1).
