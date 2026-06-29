@@ -53,16 +53,14 @@ jobs:
         run: |
           cmake -G "Unix Makefiles" -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
 
+      # macOS Setup & Compilation (Removes explicit AGL framework requirement cleanly)
       - name: Configure CMake (macOS)
         if: matrix.os == 'macos-latest'
         run: |
-          mkdir -p /tmp/Frameworks/AGL.framework
-          touch /tmp/Frameworks/AGL.framework/AGL
           cmake -G "Unix Makefiles" -B build \
             -DCMAKE_BUILD_TYPE=Release \
             -DBUILD_TESTING=ON \
-            -DCMAKE_EXE_LINKER_FLAGS="-F/tmp/Frameworks" \
-            -DCMAKE_SHARED_LINKER_FLAGS="-F/tmp/Frameworks"
+            -DAGL_LIBRARY="-framework OpenGL"
 
       # Windows Setup & Compilation
       - name: Configure CMake (Windows)
@@ -98,7 +96,6 @@ jobs:
       - name: Package app (macOS)
         if: matrix.os == 'macos-latest'
         run: |
-          # Deploy Qt dependencies and package as dmg
           macdeployqt build/aethertftp.app -dmg
           mv build/aethertftp.dmg build/AetherTFTP.dmg
 
