@@ -18,6 +18,22 @@ if(BUILD_COVERAGE)
     endif()
 endif()
 
+# Sanitizer instrumentation. Accepts: address, undefined, address+undefined,
+# or thread. Applied to all targets, so configure must run before any target.
+set(AETHER_SANITIZER "" CACHE STRING
+    "Sanitizer(s) to enable: address, undefined, address+undefined, thread")
+if(AETHER_SANITIZER)
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR
+       CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        string(REPLACE "+" "," _aether_san "${AETHER_SANITIZER}")
+        add_compile_options(-fsanitize=${_aether_san} -fno-omit-frame-pointer -g)
+        add_link_options(-fsanitize=${_aether_san})
+        message(STATUS "AetherTFTP sanitizer enabled: ${_aether_san}")
+    else()
+        message(WARNING "AETHER_SANITIZER ignored: unsupported compiler")
+    endif()
+endif()
+
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
 endif()

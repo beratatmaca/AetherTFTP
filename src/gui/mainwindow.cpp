@@ -330,14 +330,14 @@ QWidget *MainWindow::buildMetricsGroup() {
     auto *layout = new QVBoxLayout(box);
 
     m_metricsActiveLabel =
-        new QLabel(QStringLiteral("Active Sessions: 0"), box);
-    m_metricsBytesLabel = new QLabel(QStringLiteral("Transferred: 0 B"), box);
+        new QLabel(QStringLiteral("Active Sessions: <b><font color='#06B6D4'>0</font></b>"), box);
+    m_metricsBytesLabel = new QLabel(QStringLiteral("Transferred: <b><font color='#10B981'>0 B</font></b>"), box);
     m_metricsTransfersLabel =
-        new QLabel(QStringLiteral("Transfers (S/F): 0 / 0"), box);
+        new QLabel(QStringLiteral("Transfers (S/F): <b><font color='#10B981'>0</font></b> / <b><font color='#EF4444'>0</font></b>"), box);
     m_metricsRetransLabel =
-        new QLabel(QStringLiteral("Retransmissions: 0"), box);
+        new QLabel(QStringLiteral("Retransmissions: <b><font color='#F59E0B'>0</font></b>"), box);
     m_metricsSpeedLabel =
-        new QLabel(QStringLiteral("Current Speed: 0 B/s"), box);
+        new QLabel(QStringLiteral("Current Speed: <b><font color='#06B6D4'>0 B/s</font></b>"), box);
 
     layout->addWidget(m_metricsActiveLabel);
     layout->addWidget(m_metricsBytesLabel);
@@ -376,15 +376,15 @@ void MainWindow::updateMetrics() {
     };
 
     m_metricsActiveLabel->setText(
-        QStringLiteral("Active Sessions: %1").arg(active));
+        QStringLiteral("Active Sessions: <b><font color='#06B6D4'>%1</font></b>").arg(active));
     m_metricsBytesLabel->setText(
-        QStringLiteral("Transferred: %1").arg(formatBytes(bytes)));
+        QStringLiteral("Transferred: <b><font color='#10B981'>%1</font></b>").arg(formatBytes(bytes)));
     m_metricsTransfersLabel->setText(
-        QStringLiteral("Transfers (S/F): %1 / %2").arg(success).arg(failure));
+        QStringLiteral("Transfers (S/F): <b><font color='#10B981'>%1</font></b> / <b><font color='#EF4444'>%2</font></b>").arg(success).arg(failure));
     m_metricsRetransLabel->setText(
-        QStringLiteral("Retransmissions: %1").arg(retrans));
+        QStringLiteral("Retransmissions: <b><font color='#F59E0B'>%1</font></b>").arg(retrans));
     m_metricsSpeedLabel->setText(
-        QStringLiteral("Current Speed: %1/s").arg(formatBytes(qint64(speed))));
+        QStringLiteral("Current Speed: <b><font color='#06B6D4'>%1/s</font></b>").arg(formatBytes(qint64(speed))));
 }
 
 }  // namespace tftp::gui

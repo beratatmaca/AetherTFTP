@@ -2,7 +2,10 @@
   "permissions": {
     "allow": [
       "Bash(cmake --build build --target format-check)",
-      "Bash(./build/tftp_test)"
+      "Bash(./build/tftp_test)",
+      "Bash(TSAN_OPTIONS=halt_on_error=0 ./build-tsan/tftp_test)",
+      "Bash(echo \"exit: $?\")",
+      "Read(//tmp/**)"
     ]
   }
 }
