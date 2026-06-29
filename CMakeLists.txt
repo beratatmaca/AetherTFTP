@@ -67,8 +67,9 @@ endif()
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/DevTools.cmake)
 
+include(GNUInstallDirs)
+
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    include(GNUInstallDirs)
     install(TARGETS aether_core aether_cli aethertftp
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
         LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
@@ -81,6 +82,18 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     install(FILES dist/aethertftp.service
         DESTINATION /lib/systemd/system
     )
+elseif(WIN32)
+    install(TARGETS aethertftp RUNTIME DESTINATION bin)
+    
+    # Locate windeployqt
+    get_target_property(_qmake_executable Qt6::qmake IMPORTED_LOCATION)
+    get_filename_component(_qt_bin_dir "${_qmake_executable}" DIRECTORY)
+    find_program(WINDEPLOYQT_EXECUTABLE windeployqt HINTS "${_qt_bin_dir}")
+    
+    # Run windeployqt on the installed executable to bundle Qt dependencies
+    install(CODE "
+        execute_process(COMMAND \"${WINDEPLOYQT_EXECUTABLE}\" --no-compiler-runtime \"\${CMAKE_INSTALL_PREFIX}/bin/aethertftp.exe\")
+    ")
 endif()
 
 set(CPACK_PACKAGE_NAME "AetherTFTP")

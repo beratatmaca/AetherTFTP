@@ -1,0 +1,22 @@
+# Exclude local build directories
+build/
+build-*/
+dist/
+
+# Exclude IDE and version control configs
+.git/
+.vscode/
+.github/
+.agents/
+.gemini/
+
+# Exclude temp files
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.dylib
+*.dll
+CMakeCache.txt
+CMakeFiles/

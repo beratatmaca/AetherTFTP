@@ -39,7 +39,6 @@ jobs:
         uses: jurplel/install-qt-action@v3
         with:
           version: '6.4.*'
-          modules: 'qtcore qtnetwork qttest qtwidgets'
           cache: true
 
       # Linux Setup & Compilation

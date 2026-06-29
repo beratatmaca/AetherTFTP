@@ -11,6 +11,7 @@
 #include <QJsonObject>
 #include <QDateTime>
 #include <QTextStream>
+#include <algorithm>
 #include <cmath>
 
 namespace tftp {
@@ -282,30 +283,32 @@ void TftpServer::onReadyRead() {
 qint64 TftpServer::requestGlobalDelay(qint64 packetSize) {
     if (m_globalLimit <= 0)
         return 0;
+
+    const double packetSizeDouble = static_cast<double>(packetSize);
+
     if (!m_globalTimer.isValid()) {
         m_globalTimer.start();
         m_globalTokens = double(m_globalLimit);
     }
     qint64 elapsed = m_globalTimer.restart();
-    m_globalTokens += (double(elapsed) / 1000.0) * m_globalLimit;
+    m_globalTokens += (double(elapsed) / 1000.0) * double(m_globalLimit);
     double maxTokens = qMax<double>(65536.0 * 2.0, double(m_globalLimit));
-    if (m_globalTokens > maxTokens) {
-        m_globalTokens = maxTokens;
-    }
-    if (m_globalTokens >= packetSize) {
-        m_globalTokens -= packetSize;
+    m_globalTokens = std::min(m_globalTokens, maxTokens);
+    if (m_globalTokens >= packetSizeDouble) {
+        m_globalTokens -= packetSizeDouble;
         return 0;
     } else {
-        double needed = double(packetSize) - m_globalTokens;
+        double needed = packetSizeDouble - m_globalTokens;
         qint64 delayMs =
             qint64(std::ceil(needed * 1000.0 / double(m_globalLimit)));
-        m_globalTokens -= packetSize;
+        m_globalTokens -= packetSizeDouble;
         return delayMs;
     }
 }
 
-void TftpServer::logEvent(const QString &eventType, const QString &sessionId,
-                          const QString &clientIp, const QString &fileName,
+void TftpServer::logEvent(const QString &eventType,
+                          const QString &sessionIdentifier,
+                          const QString &clientAddress, const QString &fileName,
                           int blockCount, const QString &status,
                           const QString &message) {
     if (m_jsonLoggingEnabled) {
@@ -313,8 +316,8 @@ void TftpServer::logEvent(const QString &eventType, const QString &sessionId,
         obj.insert(QStringLiteral("timestamp"),
                    QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs));
         obj.insert(QStringLiteral("event_type"), eventType);
-        obj.insert(QStringLiteral("session_id"), sessionId);
-        obj.insert(QStringLiteral("client_ip"), clientIp);
+        obj.insert(QStringLiteral("session_id"), sessionIdentifier);
+        obj.insert(QStringLiteral("client_ip"), clientAddress);
         obj.insert(QStringLiteral("file_name"), fileName);
         obj.insert(QStringLiteral("block_count"), blockCount);
         obj.insert(QStringLiteral("status"), status);
@@ -329,7 +332,7 @@ void TftpServer::logEvent(const QString &eventType, const QString &sessionId,
         } else if (eventType == QLatin1String("transfer_rejected")) {
             if (message.contains(QLatin1String("ACL"))) {
                 emit logMessage(QStringLiteral("Rejected by ACL: %1 from %2")
-                                    .arg(fileName, clientIp));
+                                    .arg(fileName, clientAddress));
             } else {
                 emit logMessage(
                     QStringLiteral("Rejected unsafe path: %1").arg(fileName));

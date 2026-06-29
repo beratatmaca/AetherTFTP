@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cmake --build build --target format-check)",
+      "Bash(./build/tftp_test)"
+    ]
+  }
+}

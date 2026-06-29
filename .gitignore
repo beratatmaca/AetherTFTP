@@ -36,3 +36,5 @@ build-*/
 
 # VS Code CMake Presets
 CMakeUserPresets.json
+# Per-user VS Code MCP server config (machine-specific)
+.vscode/mcp.json
