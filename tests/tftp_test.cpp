@@ -721,7 +721,7 @@ void TFTPProtocolTest::testAgainstTftpHpa() {
     QProcess downloadProcess;
     downloadProcess.setWorkingDirectory(clientDir.path());
     downloadProcess.start(tftpBin, {QStringLiteral("127.0.0.1"), QStringLiteral("12349"), QStringLiteral("-m"), QStringLiteral("binary"),
-                                    QStringLiteral("-c"), QStringLiteral("get"), QStringLiteral("tftp_hpa_down.txt")});
+                                    QStringLiteral("-c"), QStringLiteral("get tftp_hpa_down.txt")});
     QVERIFY(downloadProcess.waitForFinished(5000));
     QCOMPARE(downloadProcess.exitCode(), 0);
 
@@ -735,7 +735,7 @@ void TFTPProtocolTest::testAgainstTftpHpa() {
     QProcess uploadProcess;
     uploadProcess.setWorkingDirectory(clientDir.path());
     uploadProcess.start(tftpBin, {QStringLiteral("127.0.0.1"), QStringLiteral("12349"), QStringLiteral("-m"), QStringLiteral("binary"),
-                                  QStringLiteral("-c"), QStringLiteral("put"), QStringLiteral("tftp_hpa_up.txt")});
+                                  QStringLiteral("-c"), QStringLiteral("put tftp_hpa_up.txt")});
     QVERIFY(uploadProcess.waitForFinished(5000));
     QCOMPARE(uploadProcess.exitCode(), 0);
 
