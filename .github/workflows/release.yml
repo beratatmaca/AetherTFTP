@@ -56,11 +56,13 @@ jobs:
       - name: Configure CMake (macOS)
         if: matrix.os == 'macos-latest'
         run: |
+          mkdir -p /tmp/Frameworks/AGL.framework
+          touch /tmp/Frameworks/AGL.framework/AGL
           cmake -G "Unix Makefiles" -B build \
             -DCMAKE_BUILD_TYPE=Release \
             -DBUILD_TESTING=ON \
-            -DCMAKE_EXE_LINKER_FLAGS="-framework OpenGL" \
-            -DCMAKE_SHARED_LINKER_FLAGS="-framework OpenGL"
+            -DCMAKE_EXE_LINKER_FLAGS="-F/tmp/Frameworks" \
+            -DCMAKE_SHARED_LINKER_FLAGS="-F/tmp/Frameworks"
 
       # Windows Setup & Compilation
       - name: Configure CMake (Windows)
