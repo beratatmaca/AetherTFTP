@@ -756,7 +756,7 @@ void TFTPProtocolTest::testAgainstTftpHpa() {
     QProcess downloadProcess;
     downloadProcess.setWorkingDirectory(clientDir.path());
     downloadProcess.start(tftpBin, {QStringLiteral("-m"), QStringLiteral("binary"), QStringLiteral("127.0.0.1"), QStringLiteral("12349"),
-                                    QStringLiteral("-c"), QStringLiteral("get tftp_hpa_down.txt")});
+                                    QStringLiteral("-c"), QStringLiteral("get"), QStringLiteral("tftp_hpa_down.txt")});
     QVERIFY2(waitForProcess(downloadProcess, 8000), "tftp-hpa download did not finish");
     QByteArray downloadErrors = downloadProcess.readAllStandardError() + "\n" + downloadProcess.readAllStandardOutput();
     QVERIFY2(downloadProcess.exitCode() == 0, downloadErrors.constData());
@@ -771,7 +771,7 @@ void TFTPProtocolTest::testAgainstTftpHpa() {
     QProcess uploadProcess;
     uploadProcess.setWorkingDirectory(clientDir.path());
     uploadProcess.start(tftpBin, {QStringLiteral("-m"), QStringLiteral("binary"), QStringLiteral("127.0.0.1"), QStringLiteral("12349"),
-                                  QStringLiteral("-c"), QStringLiteral("put tftp_hpa_up.txt")});
+                                  QStringLiteral("-c"), QStringLiteral("put"), QStringLiteral("tftp_hpa_up.txt")});
     QVERIFY2(waitForProcess(uploadProcess, 8000), "tftp-hpa upload did not finish");
     QByteArray uploadErrors = uploadProcess.readAllStandardError() + "\n" + uploadProcess.readAllStandardOutput();
     QVERIFY2(uploadProcess.exitCode() == 0, uploadErrors.constData());

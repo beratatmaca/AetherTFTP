@@ -47,13 +47,20 @@ endif()
 
 find_package(Qt6 REQUIRED COMPONENTS Core Network Widgets)
 
-# Prebuilt Qt 6 for macOS can carry a link reference to Apple's long-removed
-# AGL framework (pulled in transitively by Qt6::Gui), which breaks linking on
-# current macOS SDKs with: "ld: framework 'AGL' not found". We don't use
-# OpenGL/AGL directly, so rewrite any AGL reference in Qt's imported targets to
-# the still-present OpenGL framework.
+# Prebuilt Qt 6 for macOS can emit a spurious link to Apple's long-removed AGL
+# framework (pulled in transitively via Qt6::Gui / WrapOpenGL), which breaks
+# linking on current macOS SDKs with: "ld: framework 'AGL' not found". We never
+# use AGL, so handle it two ways:
+#   1. Best-effort: rewrite any reachable AGL reference in Qt's imported targets
+#      to the still-present OpenGL framework.
+#   2. Guaranteed: provide a stub AGL.framework on the framework search path so
+#      the stray "-framework AGL" directive links regardless of its origin. The
+#      stub's install_name points at the real (still-present) OpenGL framework,
+#      so the recorded runtime dependency resolves on any macOS — no dangling
+#      @rpath load command. We reference no AGL symbols, so the empty stub is
+#      sufficient.
 if(APPLE)
-    foreach(_qt_target Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Network)
+    foreach(_qt_target Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Network WrapOpenGL::WrapOpenGL Qt6::OpenGL)
         if(TARGET ${_qt_target})
             get_target_property(_qt_link_libs ${_qt_target} INTERFACE_LINK_LIBRARIES)
             if(_qt_link_libs)
@@ -63,6 +70,21 @@ if(APPLE)
             endif()
         endif()
     endforeach()
+
+    set(_aether_compat_fw "${CMAKE_BINARY_DIR}/compat-frameworks")
+    set(_aether_opengl_id "/System/Library/Frameworks/OpenGL.framework/Versions/A/OpenGL")
+    if(NOT EXISTS "${_aether_compat_fw}/AGL.framework/AGL")
+        file(MAKE_DIRECTORY "${_aether_compat_fw}/AGL.framework")
+        execute_process(
+            COMMAND ${CMAKE_CXX_COMPILER} -dynamiclib -x c /dev/null
+                    -install_name "${_aether_opengl_id}"
+                    -o "${_aether_compat_fw}/AGL.framework/AGL"
+            RESULT_VARIABLE _aether_agl_rc OUTPUT_QUIET ERROR_QUIET)
+    endif()
+    if(EXISTS "${_aether_compat_fw}/AGL.framework/AGL")
+        add_link_options("-F${_aether_compat_fw}")
+        message(STATUS "AetherTFTP: AGL link-compat stub at ${_aether_compat_fw}")
+    endif()
 endif()
 
 add_library(aether_core STATIC
