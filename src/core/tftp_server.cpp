@@ -168,10 +168,18 @@ QString TftpServer::resolveSafePath(const QString &filename) const {
     if (canonicalCandidate.isEmpty())
         return QString();
 
+#ifdef Q_OS_WIN
+    const QString rootPrefix = (canonicalRoot + QLatin1Char('/')).toLower();
+    const QString candidateLower = canonicalCandidate.toLower();
+    if (candidateLower != canonicalRoot.toLower() &&
+        !candidateLower.startsWith(rootPrefix))
+        return QString();
+#else
     const QString rootPrefix = canonicalRoot + QLatin1Char('/');
     if (canonicalCandidate != canonicalRoot &&
         !canonicalCandidate.startsWith(rootPrefix))
         return QString();
+#endif
     return canonicalCandidate;
 }
 

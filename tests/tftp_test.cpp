@@ -373,6 +373,9 @@ void TFTPProtocolTest::testSymlinkPathTraversal() {
 }
 
 void TFTPProtocolTest::testIpv6Binding() {
+#ifdef Q_OS_WIN
+    QSKIP("IPv6 loopback testing is skipped on Windows due to CI virtual environment network routing limitations.");
+#else
     TftpServer ipv6Server;
     // Bind to LocalHostIPv6 (::1).
     if (!ipv6Server.listen(QHostAddress::LocalHostIPv6, 0,
@@ -395,6 +398,7 @@ void TFTPProtocolTest::testIpv6Binding() {
     QFile out(outPath);
     QVERIFY(out.open(QIODevice::ReadOnly));
     QCOMPARE(out.readAll(), data);
+#endif
 }
 
 void TFTPProtocolTest::testSinglePortMultiplexing() {
