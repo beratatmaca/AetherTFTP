@@ -1,6 +1,7 @@
 # AetherTFTP
 
-[![Build Status](https://github.com/beratatmaca/AetherTFTP/actions/workflows/release.yml/badge.svg)](https://github.com/beratatmaca/AetherTFTP/actions)
+[![Build Status](https://github.com/beratatmaca/AetherTFTP/actions/workflows/ci.yml/badge.svg)](https://github.com/beratatmaca/AetherTFTP/actions)
+[![Release Status](https://github.com/beratatmaca/AetherTFTP/actions/workflows/release.yml/badge.svg)](https://github.com/beratatmaca/AetherTFTP/actions)
 [![codecov](https://codecov.io/gh/beratatmaca/AetherTFTP/graph/badge.svg)](https://codecov.io/gh/beratatmaca/AetherTFTP)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![C++17](https://img.shields.io/badge/C++-17-blue.svg?logo=c%2B%2B)](https://en.cppreference.com/w/cpp/compiler_support/17)
