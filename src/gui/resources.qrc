@@ -2,5 +2,6 @@
 <RCC version="1.0">
     <qresource prefix="/aether">
         <file>theme.qss</file>
+        <file alias="icon.ico">../../assets/icon.ico</file>
     </qresource>
 </RCC>

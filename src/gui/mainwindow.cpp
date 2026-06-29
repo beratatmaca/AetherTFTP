@@ -16,6 +16,7 @@
 #include <QGroupBox>
 #include <QHBoxLayout>
 #include <QHeaderView>
+#include <QIcon>
 #include <QHostAddress>
 #include <QLabel>
 #include <QLineEdit>
@@ -32,6 +33,7 @@ namespace tftp::gui {
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     setWindowTitle(QStringLiteral("AetherTFTP"));
+    setWindowIcon(QIcon(QStringLiteral(":/aether/icon.ico")));
     setAcceptDrops(true);
     m_serverDir = QDir::currentPath();
 
