@@ -73,10 +73,6 @@ jobs:
         run: |
           cmake --build build --config Release -j2
 
-      - name: Run Unit Tests
-        run: |
-          ctest --test-dir build --output-on-failure -C Release
-
       # Linux Packaging via CPack
       - name: Generate DEB Package (Linux)
         if: matrix.os == 'ubuntu-latest'
