@@ -38,7 +38,7 @@ jobs:
       - name: Install Qt 6 SDK
         uses: jurplel/install-qt-action@v3
         with:
-          version: '6.4.*'
+          version: '6.6.*'
           cache: true
 
       # Linux Setup & Compilation
