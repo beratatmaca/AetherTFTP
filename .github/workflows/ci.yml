@@ -26,11 +26,70 @@ jobs:
         run: cmake --build build --target format-check
 
   # ---------------------------------------------------------------------------
+  # Unit Tests Matrix — cross-platform execution.
+  # ---------------------------------------------------------------------------
+  unit-tests:
+    name: Unit Tests on ${{ matrix.os }}
+    needs: format
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Qt 6 SDK
+        uses: jurplel/install-qt-action@v3
+        with:
+          version: "6.6.3"
+          cache: false
+
+      - name: Install Linux Build Dependencies
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libgl1-mesa-dev
+
+      - name: Configure CMake (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          cmake -G "Unix Makefiles" -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
+
+      - name: Configure CMake (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          cmake -G "Unix Makefiles" -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_TESTING=ON \
+            -DAGL_LIBRARY="-framework OpenGL"
+
+      - name: Configure CMake (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          cmake -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
+
+      - name: Compile Code
+        run: |
+          cmake --build build --config Release -j$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 2)
+
+      - name: Run Unit Tests
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          ctest --test-dir build --output-on-failure -C Release
+
+  # ---------------------------------------------------------------------------
   # Sanitizers — ASan+UBSan is a blocking gate (verified clean). TSan is
   # advisory (continue-on-error) until validated green on the CI runner.
   # ---------------------------------------------------------------------------
   sanitizers:
     name: Sanitizer (${{ matrix.sanitizer }})
+    needs: format
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -73,6 +132,7 @@ jobs:
   # ---------------------------------------------------------------------------
   coverage:
     name: Coverage
+    needs: format
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
