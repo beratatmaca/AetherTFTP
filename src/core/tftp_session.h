@@ -6,6 +6,7 @@
 #include <QHostAddress>
 #include <QObject>
 #include <QElapsedTimer>
+#include <QPointer>
 
 #include <memory>
 
@@ -102,6 +103,8 @@ private slots:
     void onTimeout();
     /** @brief Send the pending deferred packet. */
     void onSendTimerTimeout();
+    void onDataBlockRead(quint16 block, const QByteArray &payload, bool ok);
+    void onDataBlockWritten(quint16 block, int size, bool ok);
 
 private:
     void sendPacketImmediate(const QByteArray &packet);
@@ -155,6 +158,9 @@ private:
     QElapsedTimer m_sessionTokenTimer;
     QByteArray m_pendingSendPacket;
     bool m_pendingArmRetransmit = false;
+
+    struct ReadTask;
+    struct WriteTask;
 };
 
 }  // namespace tftp

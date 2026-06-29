@@ -5,8 +5,75 @@
 #include <QTimer>
 #include <QUdpSocket>
 #include <cmath>
+#include <QThreadPool>
+#include <QRunnable>
 
 namespace tftp {
+
+struct TftpSession::ReadTask : public QRunnable {
+    QPointer<TftpSession> session;
+    quint16 block;
+    qint64 offset;
+    int blockSize;
+
+    ReadTask(TftpSession *s, quint16 b, qint64 o, int sz)
+        : session(s), block(b), offset(o), blockSize(sz) {
+        setAutoDelete(true);
+    }
+
+    void run() override {
+        QByteArray payload;
+        bool ok = false;
+        auto s = session;
+        auto b = block;
+        auto o = offset;
+        auto sz = blockSize;
+        if (s) {
+            if (s->m_file && s->m_file->seek(o)) {
+                payload = s->m_file->read(sz);
+                ok = true;
+            }
+        }
+        if (s) {
+            QMetaObject::invokeMethod(s.data(), [s, b, payload, ok]() {
+                if (s) {
+                    s->onDataBlockRead(b, payload, ok);
+                }
+            }, Qt::QueuedConnection);
+        }
+    }
+};
+
+struct TftpSession::WriteTask : public QRunnable {
+    QPointer<TftpSession> session;
+    quint16 block;
+    QByteArray payload;
+
+    WriteTask(TftpSession *s, quint16 b, const QByteArray &p)
+        : session(s), block(b), payload(p) {
+        setAutoDelete(true);
+    }
+
+    void run() override {
+        bool ok = false;
+        auto s = session;
+        auto b = block;
+        auto p = payload;
+        if (s) {
+            if (s->m_file) {
+                ok = (s->m_file->write(p) == p.size());
+            }
+        }
+        if (s) {
+            int size = p.size();
+            QMetaObject::invokeMethod(s.data(), [s, b, size, ok]() {
+                if (s) {
+                    s->onDataBlockWritten(b, size, ok);
+                }
+            }, Qt::QueuedConnection);
+        }
+    }
+};
 
 TftpSession::TftpSession(const QHostAddress &peer, quint16 peerPort,
                          const Request &request, const QString &filePath,
@@ -262,9 +329,14 @@ qint64 TftpSession::requestSessionDelay(qint64 packetSize) {
 void TftpSession::sendDataBlock(quint16 block) {
     if (!m_file)
         return;
+
     const qint64 offset = qint64(block - 1) * m_blockSize;
-    m_file->seek(offset);
-    QByteArray payload = m_file->read(m_blockSize);
+    QThreadPool::globalInstance()->start(new ReadTask(this, block, offset, m_blockSize));
+}
+
+void TftpSession::onDataBlockRead(quint16 block, const QByteArray &payload, bool ok) {
+    if (!ok || m_finished)
+        return;
 
     m_currentBlock = block;
     m_oackPending = false;
@@ -320,15 +392,23 @@ void TftpSession::handleData(quint16 block, const QByteArray &payload) {
     if (m_oackPending)
         m_oackPending = false;
 
-    if (m_file->write(payload) != payload.size()) {
+    QThreadPool::globalInstance()->start(new WriteTask(this, block, payload));
+}
+
+void TftpSession::onDataBlockWritten(quint16 block, int size, bool ok) {
+    if (m_finished)
+        return;
+
+    if (!ok) {
         sendError(ErrorCode::DiskFull, QStringLiteral("Write failed"));
         return;
     }
-    m_bytesTransferred += payload.size();
+
+    m_bytesTransferred += size;
     m_retries = 0;
     emit progress(m_bytesTransferred, m_totalBytes);
 
-    const bool isLast = payload.size() < m_blockSize;
+    const bool isLast = size < m_blockSize;
     if (isLast) {
         m_file->flush();
         m_finished = true;

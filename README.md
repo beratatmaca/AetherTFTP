@@ -1,5 +1,11 @@
 # AetherTFTP
 
+[![Build Status](https://github.com/beratatmaca/AetherTFTP/actions/workflows/release.yml/badge.svg)](https://github.com/beratatmaca/AetherTFTP/actions)
+[![codecov](https://codecov.io/gh/beratatmaca/AetherTFTP/graph/badge.svg)](https://codecov.io/gh/beratatmaca/AetherTFTP)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![C++17](https://img.shields.io/badge/C++-17-blue.svg?logo=c%2B%2B)](https://en.cppreference.com/w/cpp/compiler_support/17)
+[![Qt 6](https://img.shields.io/badge/Qt-6-green.svg?logo=qt)](https://www.qt.io/)
+
 AetherTFTP is a modern, lightweight, open-source cross-platform TFTP (Trivial File Transfer Protocol) client and server application. Written in C++17 and utilizing the Qt 6 framework, it is designed for speed, reliability, and high-block-size network throughput while providing both a headless Command Line Interface (CLI) and an intuitive Graphical User Interface (GUI).
 
 ## Technical Architecture
