@@ -36,6 +36,21 @@ jobs:
       - name: Generate Documentation
         run: cmake --build build --target docs
 
+  lint:
+    name: Static Analysis
+    needs: format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install tools
+        run: sudo apt-get update && sudo apt-get install -y cmake g++ qt6-base-dev clang-tidy
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=ON
+      - name: Build
+        run: cmake --build build -j$(nproc)
+      - name: Run clang-tidy
+        run: cmake --build build --target tidy
+
   unit-tests:
     name: Unit Tests
     needs: format
@@ -91,7 +106,7 @@ jobs:
       - name: Run tests
         env:
           QT_QPA_PLATFORM: offscreen
-        run: ctest --test-dir build --output-on-failure
+        run: ./build/tftp_test -o -,txt -o junit.xml,junitxml
       - name: Capture coverage
         run: |
           lcov --capture --directory build --output-file coverage.info \
@@ -106,3 +121,8 @@ jobs:
           fail_ci_if_error: false
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/test-results-action@v1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
