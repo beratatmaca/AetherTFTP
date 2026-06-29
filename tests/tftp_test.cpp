@@ -65,7 +65,8 @@ void TFTPProtocolTest::initTestCase() {
     m_server = new TftpServer(this);
     // Port 0 lets the OS pick a free port — avoids privileged-port and
     // collision problems in CI.
-    QVERIFY(m_server->listen(QHostAddress(QStringLiteral("127.0.0.1")), 0, m_serverDir.path()));
+    QVERIFY(m_server->listen(QHostAddress(QStringLiteral("127.0.0.1")), 0,
+                             m_serverDir.path()));
     m_port = m_server->port();
     QVERIFY(m_port != 0);
 }
