@@ -2,10 +2,19 @@ name: aethertftp
 title: AetherTFTP
 base: core24
 adopt-info: aethertftp
-summary: Modern lightweight TFTP GUI & CLI client and server
+icon: snap/gui/icon.png
+summary: High-performance TFTP client & server with a sleek GUI and headless CLI
 description: |
-  AetherTFTP is a modern, lightweight, open-source cross-platform TFTP client and server application.
-  Written in C++17 and utilizing the Qt 6 framework, it is designed for speed, reliability, and high-block-size network throughput.
+  AetherTFTP is a modern, lightweight, open-source TFTP (Trivial File Transfer Protocol) client and server application designed for speed, reliability, and ease of use. Engineered in C++17 and powered by the Qt 6 framework, it is the ultimate tool for system administrators, network engineers, and developers looking to transfer files, upgrade router/switch firmware, or set up PXE boot environments.
+
+  Key Features:
+  - **Sleek GUI & Headless CLI**: Automatically launches as a graphical application or shifts into a zero-dependency CLI mode based on arguments.
+  - **Blazing Fast Speeds**: Supports custom block sizes (RFC 2348) up to 65464 bytes and window size options for maximum network throughput.
+  - **RFC Standards Compliant**: Full implementation of RFC 1350 (Core TFTP), RFC 2347 (Option Extension), RFC 2348 (Blocksize Option), and RFC 2349 (Timeout & Transfer Size Options).
+  - **Integrated Server**: Spin up a local TFTP server with customizable root directories, ports, and real-time transaction logging.
+  - **Active Transfer Monitoring**: Track multi-file progress, transfer rates, and connection status via the built-in dashboard and active queue viewer.
+
+  Perfect for: firmware updates, router/switch recovery, network configuration backups, and PXE boot setups.
 license: MIT
 contact: https://github.com/beratatmaca/AetherTFTP/issues
 issues: https://github.com/beratatmaca/AetherTFTP/issues
@@ -15,20 +24,17 @@ source-code: https://github.com/beratatmaca/AetherTFTP
 grade: stable
 confinement: strict
 
+layout:
+  /usr/lib/x86_64-linux-gnu/libproxy:
+    bind: $SNAP/usr/lib/x86_64-linux-gnu/libproxy
+
 apps:
   aethertftp:
     command: usr/local/bin/aethertftp
+    desktop: snap/gui/aethertftp.desktop
     plugs:
       - network
       - network-bind
-
-  server-daemon:
-    command: usr/local/bin/aethertftp --server --port 6969 --dir $SNAP_COMMON
-    plugs:
-      - network
-      - network-bind
-    daemon: simple
-    restart-condition: on-failure
 
 parts:
   aethertftp:
@@ -54,6 +60,7 @@ parts:
       - libgraphite2-3
       - libharfbuzz0b
       - libmd4c0
+      - libproxy1v5
     override-pull: |
       craftctl default
       base=$(tr -d '[:space:]' < VERSION)

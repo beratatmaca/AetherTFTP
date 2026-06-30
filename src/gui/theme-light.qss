@@ -80,31 +80,21 @@ QLineEdit:disabled, QSpinBox:disabled {
 
 /* Buttons */
 QPushButton {
-    border: 1px solid #0891B2;
-    border-radius: 6px;
-    padding: 8px 16px;
-    color: #0891B2;
-    background-color: transparent;
-    font-weight: 600;
-}
-QPushButton:hover { background-color: rgba(8, 145, 178, 0.10); }
-QPushButton:pressed { background-color: rgba(8, 145, 178, 0.20); }
-QPushButton:focus { outline: none; border: 2px solid #0891B2; }
-QPushButton:disabled {
-    color: #94A3B8;
-    border-color: #E2E8F0;
-    background-color: transparent;
-}
-
-/* Primary Action Buttons */
-QPushButton#primaryButton {
     background-color: #0891B2;
     color: #FFFFFF;
     border: 1px solid #0891B2;
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-weight: 600;
 }
-QPushButton#primaryButton:hover { background-color: #06B6D4; border-color: #06B6D4; }
-QPushButton#primaryButton:pressed { background-color: #0E7490; border-color: #0E7490; }
-QPushButton#primaryButton:disabled { background-color: #CBD5E1; color: #F8FAFC; border-color: #CBD5E1; }
+QPushButton:hover { background-color: #06B6D4; border-color: #06B6D4; }
+QPushButton:pressed { background-color: #0E7490; border-color: #0E7490; }
+QPushButton:focus { outline: none; border: 2px solid #0891B2; }
+QPushButton:disabled {
+    background-color: #CBD5E1;
+    color: #F8FAFC;
+    border-color: #CBD5E1;
+}
 
 /* Status text */
 QLabel#statusRunning { color: #059669; font-weight: 600; }

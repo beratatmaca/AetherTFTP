@@ -182,13 +182,19 @@ QWidget *MainWindow::buildClientTab() {
     connect(actions, &TransferActionDelegate::cancelRequested, this, &MainWindow::cancelTransfer);
 
     QHeaderView *header = m_view->header();
-    header->setSectionResizeMode(TransferModel::ColName, QHeaderView::Stretch);
-    header->setSectionResizeMode(TransferModel::ColDirection, QHeaderView::ResizeToContents);
-    header->setSectionResizeMode(TransferModel::ColPeer, QHeaderView::ResizeToContents);
-    header->setSectionResizeMode(TransferModel::ColProgress, QHeaderView::Fixed);
-    m_view->setColumnWidth(TransferModel::ColProgress, 150);
+    header->setSectionResizeMode(TransferModel::ColName, QHeaderView::Interactive);
+    header->setSectionResizeMode(TransferModel::ColDirection, QHeaderView::Interactive);
+    header->setSectionResizeMode(TransferModel::ColPeer, QHeaderView::Interactive);
+    header->setSectionResizeMode(TransferModel::ColProgress, QHeaderView::Interactive);
     header->setSectionResizeMode(TransferModel::ColStatus, QHeaderView::Stretch);
     header->setSectionResizeMode(TransferModel::ColActions, QHeaderView::ResizeToContents);
+    header->setStretchLastSection(false);
+    header->setSectionsMovable(true);
+
+    m_view->setColumnWidth(TransferModel::ColName, 240);
+    m_view->setColumnWidth(TransferModel::ColDirection, 90);
+    m_view->setColumnWidth(TransferModel::ColPeer, 160);
+    m_view->setColumnWidth(TransferModel::ColProgress, 150);
     root->addWidget(m_view, 1);
 
     return page;

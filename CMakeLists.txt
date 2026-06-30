@@ -191,10 +191,9 @@ set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Modern lightweight TFTP client and server
 set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE.txt")
 
 # Debian packaging details
-set(CPACK_DEBIAN_PACKAGE_MAINTAINER "AetherTFTP Maintainers <maintainers@aethertftp.example>")
+set(CPACK_DEBIAN_PACKAGE_MAINTAINER "AetherTFTP Maintainers <beratatmaca@live.com>")
 set(CPACK_DEBIAN_PACKAGE_SECTION "net")
 set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
-set(CPACK_DEBIAN_PACKAGE_DEPENDS "libc6, libqt6core6, libqt6network6, libqt6widgets6, libqt6gui6")
 
 # WiX Windows Installer details
 set(CPACK_WIX_UPGRADE_GUID "D9C5F2A8-A29F-4D2A-B9C0-8B94F3C8F3A2")

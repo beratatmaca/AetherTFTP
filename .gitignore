@@ -42,3 +42,21 @@ CMakeUserPresets.json
 CLAUDE.md
 coverage_report/
 coverage.info
+
+# Manual TFTP test sandboxes (tests/run_server.sh, tests/run_client.sh).
+# Keep the aether/ and tftp/ folder layout, but never commit transferred or
+# generated payload files.
+/tests/sandbox_server/*
+!/tests/sandbox_server/aether/
+!/tests/sandbox_server/tftp/
+/tests/sandbox_server/aether/*
+!/tests/sandbox_server/aether/.gitkeep
+/tests/sandbox_server/tftp/*
+!/tests/sandbox_server/tftp/.gitkeep
+/tests/sandbox_client/*
+!/tests/sandbox_client/aether/
+!/tests/sandbox_client/tftp/
+/tests/sandbox_client/aether/*
+!/tests/sandbox_client/aether/.gitkeep
+/tests/sandbox_client/tftp/*
+!/tests/sandbox_client/tftp/.gitkeep

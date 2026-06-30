@@ -33,6 +33,16 @@ You can download pre-compiled packages directly from the [GitHub Releases Page](
 * **Windows**: Download the `.msi` installer.
 * **macOS**: Download the `.dmg` package.
 
+## Screenshots
+
+### Graphical User Interface (GUI)
+
+AetherTFTP provides an intuitive graphical interface featuring tabbed access to Client settings, Server controls, and a Dashboard overview:
+
+|                  Client Tab                  |                  Server Tab                  |
+| :------------------------------------------: | :------------------------------------------: |
+| ![Client View](assets/screenshot_client.png) | ![Server View](assets/screenshot_server.png) |
+
 ## Technical Architecture
 
 The architecture separates the core protocol logic from the presentation layer, allowing the engine to be compiled as a static library with zero graphical dependencies.
@@ -171,6 +181,32 @@ To open the graphical interface:
 ```bash
 ./build/aethertftp --gui
 ```
+
+### Interactive Peer Testing (CLI)
+
+The repository provides helper scripts to spin up standard `tftp-hpa` clients/servers as independent peers. This lets you visually test or showcase transfers in real-time.
+
+#### 1. Testing GUI Server with `run_client.sh`
+
+Run the client shell script to start an interactive CLI client peer. Point your AetherTFTP GUI server to the sandbox directory and use the CLI client to upload or download files:
+
+```bash
+./tests/run_client.sh
+```
+
+![Client Peer Demo](assets/client_usage.gif)
+
+#### 2. Testing GUI Client with `run_server.sh`
+
+Run the server shell script to launch a standard `tftp-hpa` server daemon. You can then use the AetherTFTP GUI client to perform file transfers to/from this server:
+
+```bash
+./tests/run_server.sh
+```
+
+> **Note:** `in.tftpd` must run as root (it drops privileges on every request and chroots with `--secure`), so the script re-launches itself with `sudo` and may prompt for your password. `run_client.sh` needs no special privileges.
+
+![Server Peer Demo](assets/server_usage.gif)
 
 ---
 
