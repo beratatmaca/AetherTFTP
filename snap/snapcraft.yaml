@@ -31,7 +31,7 @@ layout:
 apps:
   aethertftp:
     command: usr/local/bin/aethertftp
-    extensions: [ gnome ]
+    extensions: [ kde-neon-6 ]
     environment:
       QT_QPA_PLATFORM: "wayland;xcb"
     plugs:
