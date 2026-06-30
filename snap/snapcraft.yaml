@@ -31,7 +31,6 @@ layout:
 apps:
   aethertftp:
     command: usr/local/bin/aethertftp
-    desktop: snap/gui/aethertftp.desktop
     plugs:
       - network
       - network-bind
