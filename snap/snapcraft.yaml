@@ -33,7 +33,7 @@ apps:
     command: usr/local/bin/aethertftp
     extensions: [ kde-neon-6 ]
     environment:
-      QT_QPA_PLATFORM: "wayland;xcb"
+      QT_QPA_PLATFORM: "xcb"
     plugs:
       - network
       - network-bind
