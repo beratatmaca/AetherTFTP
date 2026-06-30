@@ -32,6 +32,8 @@ apps:
   aethertftp:
     command: usr/local/bin/aethertftp
     extensions: [ gnome ]
+    environment:
+      QT_QPA_PLATFORM: "wayland;xcb"
     plugs:
       - network
       - network-bind
