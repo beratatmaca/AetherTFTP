@@ -98,6 +98,8 @@ add_library(aether_core STATIC
     src/core/metrics_exporter.h
     src/core/tftp_client.cpp
     src/core/tftp_client.h
+    src/core/qlog.cpp
+    src/core/qlog.h
 )
 target_link_libraries(aether_core PUBLIC Qt6::Core Qt6::Network)
 target_include_directories(aether_core PUBLIC
@@ -114,12 +116,12 @@ set(CMAKE_AUTORCC ON)
 add_library(aether_gui STATIC
     src/gui/transfer_model.cpp
     src/gui/transfer_model.h
-    src/gui/server_config_dialog.cpp
-    src/gui/server_config_dialog.h
     src/gui/theme_controller.cpp
     src/gui/theme_controller.h
     src/gui/mainwindow.cpp
     src/gui/mainwindow.h
+    src/gui/speed_chart_widget.cpp
+    src/gui/speed_chart_widget.h
     src/gui/resources.qrc
 )
 target_link_libraries(aether_gui PUBLIC aether_core Qt6::Core Qt6::Widgets)
@@ -175,9 +177,8 @@ elseif(WIN32)
         )
     endif()
 
-    # Run windeployqt on the installed executable to bundle Qt dependencies
     install(CODE "
-        execute_process(COMMAND \"${WINDEPLOYQT_EXECUTABLE}\" --no-compiler-runtime \"\${CMAKE_INSTALL_PREFIX}/bin/aethertftp.exe\")
+        execute_process(COMMAND \"${WINDEPLOYQT_EXECUTABLE}\" \"\${CMAKE_INSTALL_PREFIX}/bin/aethertftp.exe\")
     ")
 endif()
 

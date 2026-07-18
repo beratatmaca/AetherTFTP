@@ -1,5 +1,6 @@
 #include "aether/version.h"
 #include "cli/cli_runner.h"
+#include "core/qlog.h"
 #include "gui/mainwindow.h"
 
 #include <QApplication>
@@ -18,6 +19,8 @@
  */
 
 int main(int argc, char *argv[]) {
+    tftp::installQLog();
+
     // arguments() needs a live application; build the raw list manually so we
     // can choose Core-vs-GUI before constructing the application object.
     QStringList rawArgs;

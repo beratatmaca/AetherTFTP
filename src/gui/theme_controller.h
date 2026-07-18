@@ -20,7 +20,7 @@ class ThemeController : public QObject {
     Q_OBJECT
 public:
     /** @brief Theme selection mode. */
-    enum class Mode : quint8 { System, Light, Dark };
+    enum class Mode : quint8 { System, Light, Dark, Nord };
 
     /**
      * @brief Construct and apply the initial theme.

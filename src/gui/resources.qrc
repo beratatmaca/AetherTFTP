@@ -3,6 +3,7 @@
     <qresource prefix="/aether">
         <file>theme-dark.qss</file>
         <file>theme-light.qss</file>
+        <file>theme-nord.qss</file>
         <file alias="icon.ico">../../assets/icon.ico</file>
     </qresource>
 </RCC>

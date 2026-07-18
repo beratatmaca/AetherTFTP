@@ -186,6 +186,14 @@ void TransferModel::removeFinished() {
 
 // --- Delegates -------------------------------------------------------------
 
+QSize ProgressBarDelegate::sizeHint(const QStyleOptionViewItem &option, const QModelIndex &index) const {
+    QSize base = QStyledItemDelegate::sizeHint(option, index);
+    // The block ladder and its centred label need real vertical room, or it
+    // degrades into an illegible smear at the default row height.
+    base.setHeight(qMax(base.height(), 28));
+    return base;
+}
+
 void ProgressBarDelegate::paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const {
     if (index.column() != TransferModel::ColProgress) {
         QStyledItemDelegate::paint(painter, option, index);
@@ -199,25 +207,29 @@ void ProgressBarDelegate::paint(QPainter *painter, const QStyleOptionViewItem &o
     const auto state = TransferState(index.data(TransferModel::StateRole).toInt());
     const QColor accent = stateColor(state);
 
-    const QRect bar = option.rect.adjusted(6, 6, -6, -6);
-    const qreal radius = 4.0;
+    const QRect bar = option.rect.adjusted(6, 7, -6, -7);
 
     painter->save();
     painter->setRenderHint(QPainter::Antialiasing, true);
-
-    // Groove.
-    QColor groove = option.palette.color(QPalette::Text);
-    groove.setAlpha(28);
     painter->setPen(Qt::NoPen);
-    painter->setBrush(groove);
-    painter->drawRoundedRect(bar, radius, radius);
 
-    // Filled chunk.
-    if (percent > 0) {
-        QRect chunk = bar;
-        chunk.setWidth(int(bar.width() * (percent / 100.0)));
-        painter->setBrush(accent);
-        painter->drawRoundedRect(chunk, radius, radius);
+    // TFTP moves in discrete, acknowledged blocks rather than a smooth
+    // stream, so progress is rendered the same way: a ladder of ticks
+    // rather than one continuous fill.
+    constexpr int kSegments = 20;
+    constexpr qreal kGapFraction = 0.28;  // Gap width as a fraction of one segment.
+    const qreal segmentPitch = qreal(bar.width()) / kSegments;
+    const qreal gap = segmentPitch * kGapFraction;
+    const int filledSegments = (percent * kSegments) / 100;
+
+    QColor groove = option.palette.color(QPalette::Text);
+    groove.setAlpha(26);
+
+    for (int i = 0; i < kSegments; ++i) {
+        const qreal x = bar.left() + i * segmentPitch;
+        QRectF segment(x, bar.top(), segmentPitch - gap, bar.height());
+        painter->setBrush(i < filledSegments ? accent : groove);
+        painter->drawRoundedRect(segment, 2.0, 2.0);
     }
 
     // Percentage label, centred.

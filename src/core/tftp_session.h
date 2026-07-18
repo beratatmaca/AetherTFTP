@@ -101,8 +101,8 @@ private slots:
     void onTimeout();
     /** @brief Send the pending deferred packet. */
     void onSendTimerTimeout();
-    void onDataBlockRead(quint16 block, const QByteArray &payload, bool ok);
-    void onDataBlockWritten(quint16 block, int size, bool ok);
+    void onDataBlockRead(qint64 block, const QByteArray &payload, bool ok);
+    void onDataBlockWritten(qint64 block, int size, bool ok);
 
 private:
     void sendPacketImmediate(const QByteArray &packet);
@@ -111,11 +111,11 @@ private:
     void finish(bool ok, const QString &message);
 
     // RRQ (we send the file).
-    void sendDataBlock(quint16 block);  ///< (Re)send DATA for @p block.
+    void sendDataBlock(qint64 block);  ///< (Re)send DATA for @p block.
     void handleAck(quint16 block);
 
     // WRQ (we receive the file).
-    void sendAck(quint16 block);  ///< (Re)send an ACK for @p block.
+    void sendAck(qint64 block);  ///< (Re)send an ACK for @p block.
     void handleData(quint16 block, const QByteArray &payload);
 
     /// Build the accepted option set and (when non-empty) arm the OACK phase.
@@ -136,10 +136,11 @@ private:
     bool m_isRead = false;  ///< true: RRQ (sending); false: WRQ (receiving).
     int m_blockSize = kDefaultBlockSize;
     int m_timeoutMs = 5000;  ///< Per-attempt timeout (RFC 2349 timeout option).
+    int m_windowSize = 1;    ///< Negotiated window size (RFC 7440).
     int m_retries = 0;
     int m_maxRetries = 5;
 
-    quint16 m_currentBlock = 0;    ///< Last block we are expecting/serving.
+    qint64 m_currentBlock = 0;     ///< Last block we are expecting/serving.
     QByteArray m_lastPacket;       ///< Last datagram sent, for retransmission.
     bool m_oackPending = false;    ///< Awaiting ACK-0 / first DATA after OACK.
     bool m_sentLastBlock = false;  ///< RRQ: final (short) block has been sent.

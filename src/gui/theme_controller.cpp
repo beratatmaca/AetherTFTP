@@ -31,6 +31,8 @@ ThemeController::Mode ThemeController::modeFromString(const QString &text) {
         return Mode::Light;
     if (text == QLatin1String("dark"))
         return Mode::Dark;
+    if (text == QLatin1String("nord"))
+        return Mode::Nord;
     return Mode::System;
 }
 
@@ -40,6 +42,8 @@ QString ThemeController::modeToString(Mode mode) {
             return QStringLiteral("light");
         case Mode::Dark:
             return QStringLiteral("dark");
+        case Mode::Nord:
+            return QStringLiteral("nord");
         case Mode::System:
             break;
     }
@@ -51,6 +55,8 @@ bool ThemeController::effectiveDark() const {
         return true;
     if (m_mode == Mode::Light)
         return false;
+    if (m_mode == Mode::Nord)
+        return true;
 #if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
     return QApplication::styleHints()->colorScheme() == Qt::ColorScheme::Dark;
 #else
@@ -60,7 +66,12 @@ bool ThemeController::effectiveDark() const {
 }
 
 void ThemeController::apply() {
-    const QString path = effectiveDark() ? QStringLiteral(":/aether/theme-dark.qss") : QStringLiteral(":/aether/theme-light.qss");
+    QString path;
+    if (m_mode == Mode::Nord) {
+        path = QStringLiteral(":/aether/theme-nord.qss");
+    } else {
+        path = effectiveDark() ? QStringLiteral(":/aether/theme-dark.qss") : QStringLiteral(":/aether/theme-light.qss");
+    }
     QFile qss(path);
     if (qss.open(QIODevice::ReadOnly | QIODevice::Text))
         m_app->setStyleSheet(QString::fromUtf8(qss.readAll()));

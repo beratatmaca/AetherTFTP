@@ -88,10 +88,24 @@ public:
      * by ACL rules. */
     bool isAllowed(const QHostAddress &clientAddress, bool isUpload) const;
 
+    /** @brief Set allowed file extension patterns (e.g. {"bin", "hex"}). Empty means allow all. */
+    void setAllowedExtensions(const QList<QString> &extensions);
+    /** @brief Set blocked file extension patterns (e.g. {"exe", "sh"}). */
+    void setBlockedExtensions(const QList<QString> &extensions);
+    /** @brief Set read-only directories inside root. Path is absolute or relative to root. */
+    void setReadOnlyDirectories(const QList<QString> &dirs);
+    /** @brief Check if a file transfer request is allowed based on file name and path. */
+    bool isPathAllowed(const QString &filename, const QString &resolvedPath, bool isUpload) const;
+
     /** @brief Enable/disable single-port multiplexing. */
     void setSinglePortMode(bool enabled) { m_singlePortMode = enabled; }
     /** @return @c true if single-port multiplexing is enabled. */
     bool isSinglePortMode() const { return m_singlePortMode; }
+
+    /** @brief Set packet drop rate (0.0 to 1.0) for packet loss simulation. */
+    void setPacketDropRate(double rate) { m_packetDropRate = rate; }
+    /** @return The packet drop rate. */
+    double packetDropRate() const { return m_packetDropRate; }
 
     /** @brief Write a UDP datagram from the server socket (used by sessions in
      * single-port mode). */
@@ -181,6 +195,9 @@ private:
     bool m_singlePortMode = false;
     QList<SubnetRule> m_whitelist;
     QList<SubnetRule> m_blacklist;
+    QList<QString> m_allowedExtensions;
+    QList<QString> m_blockedExtensions;
+    QList<QString> m_readOnlyDirs;
     QMap<QString, TftpSession *> m_sessions;
 
     // Rate Limiting
@@ -188,6 +205,7 @@ private:
     qint64 m_sessionLimit = 0;
     mutable double m_globalTokens = 0;
     mutable QElapsedTimer m_globalTimer;
+    double m_packetDropRate = 0.0;
 
     // JSON Logging
     bool m_jsonLoggingEnabled = false;

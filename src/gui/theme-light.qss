@@ -14,33 +14,34 @@ QWidget {
     font-size: 13px;
 }
 
-/* Tabs */
-QTabWidget::pane {
+/* QScrollArea's viewport paints an opaque QPalette::Base (white) behind its
+ * contents regardless of the stylesheet; make the scroll chrome transparent
+ * and give the actual left-panel widget the themed background explicitly. */
+QScrollArea, QScrollArea > QWidget {
+    background: transparent;
+    border: none;
+}
+QWidget#leftContainer {
+    background-color: #F1F5F9;
+}
+
+/* Client/Server mode switch (left panel) */
+QFrame#segmentedControl {
+    background-color: #F1F5F9;
     border: 1px solid #CBD5E1;
     border-radius: 8px;
-    top: -1px;
-    background-color: #FFFFFF;
 }
-QTabBar::tab {
-    background: transparent;
+QPushButton#segmentButton {
+    background-color: transparent;
     color: #64748B;
-    padding: 8px 18px;
-    margin-right: 4px;
-    border: 1px solid transparent;
-    border-top-left-radius: 8px;
-    border-top-right-radius: 8px;
+    border: none;
+    border-radius: 6px;
+    padding: 6px 12px;
     font-weight: 600;
 }
-QTabBar::tab:hover {
-    color: #1E293B;
-    background: rgba(15, 23, 42, 0.04);
-}
-QTabBar::tab:selected {
-    color: #0891B2;
-    background: #FFFFFF;
-    border-color: #CBD5E1;
-    border-bottom-color: #FFFFFF;
-}
+QPushButton#segmentButton:hover:!checked { color: #1E293B; background: rgba(15, 23, 42, 0.04); }
+QPushButton#segmentButton:checked { background-color: #FFFFFF; color: #0891B2; }
+QPushButton#segmentButton:focus { outline: none; border: 1px solid #0891B2; }
 
 /* Group Boxes / Containers */
 QGroupBox {
@@ -60,7 +61,7 @@ QGroupBox::title {
 }
 
 /* Inputs */
-QLineEdit, QSpinBox {
+QLineEdit, QSpinBox, QComboBox {
     background-color: #FFFFFF;
     border: 1px solid #CBD5E1;
     border-radius: 6px;
@@ -69,14 +70,55 @@ QLineEdit, QSpinBox {
     selection-background-color: #0891B2;
     selection-color: #FFFFFF;
 }
-QLineEdit:focus, QSpinBox:focus {
+QLineEdit:focus, QSpinBox:focus, QComboBox:focus {
     border: 1px solid #0891B2;
 }
-QLineEdit:disabled, QSpinBox:disabled {
+QLineEdit:disabled, QSpinBox:disabled, QComboBox:disabled {
     color: #94A3B8;
     background-color: #F1F5F9;
     border-color: #E2E8F0;
 }
+QComboBox::drop-down {
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
+    width: 25px;
+    border-left-width: 1px;
+    border-left-color: #CBD5E1;
+    border-left-style: solid;
+    border-top-right-radius: 6px;
+    border-bottom-right-radius: 6px;
+}
+QComboBox::down-arrow {
+    image: none;
+    width: 0;
+    height: 0;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 5px solid #64748B;
+}
+QComboBox::down-arrow:on { border-top-color: #0891B2; }
+QComboBox::down-arrow:disabled { border-top-color: #94A3B8; }
+QComboBox QAbstractItemView {
+    background-color: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    selection-background-color: #0891B2;
+    selection-color: #FFFFFF;
+    color: #0F172A;
+}
+
+/* Checkboxes */
+QCheckBox { spacing: 8px; }
+QCheckBox::indicator {
+    width: 16px;
+    height: 16px;
+    border: 1px solid #CBD5E1;
+    border-radius: 4px;
+    background-color: #FFFFFF;
+}
+QCheckBox::indicator:hover { border-color: #0891B2; }
+QCheckBox::indicator:checked { background-color: #0891B2; border-color: #0891B2; }
+QCheckBox::indicator:checked:hover { background-color: #06B6D4; border-color: #06B6D4; }
+QCheckBox::indicator:disabled { background-color: #F1F5F9; border-color: #E2E8F0; }
 
 /* Buttons */
 QPushButton {
@@ -108,7 +150,8 @@ QFrame#metricCard {
     padding: 12px;
 }
 QLabel#metricValue {
-    font-size: 22px;
+    font-family: "Fira Code", "Cascadia Code", Consolas, "Courier New", monospace;
+    font-size: 20px;
     font-weight: 700;
     color: #0F172A;
 }
@@ -178,3 +221,10 @@ QScrollBar:horizontal { border: none; background: #F1F5F9; height: 8px; margin: 
 QScrollBar::handle:horizontal { background: #CBD5E1; min-width: 20px; border-radius: 4px; }
 QScrollBar::handle:horizontal:hover { background: #0891B2; }
 QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal { width: 0; }
+
+tftp--gui--SpeedChartWidget {
+    qproperty-lineColor: #0891B2;
+    qproperty-bgColor: #F8FAFC;
+    qproperty-gridColor: #E2E8F0;
+    qproperty-textColor: #64748B;
+}

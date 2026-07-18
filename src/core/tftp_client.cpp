@@ -32,6 +32,7 @@ bool TftpClient::begin(Mode mode, const QString &host, quint16 port, const QStri
     m_serverPort = port;
     m_tidLocked = false;
     m_blockSize = kDefaultBlockSize;
+    m_windowSize = 1;
     m_retries = 0;
     m_block = 0;
     m_bytesTransferred = 0;
@@ -51,18 +52,34 @@ bool TftpClient::begin(Mode mode, const QString &host, quint16 port, const QStri
         m_serverAddr = info.addresses().first();
     }
 
-    m_file = std::make_unique<QFile>(localPath);
-    if (mode == Mode::Download) {
-        if (!m_file->open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-            fail(QStringLiteral("Cannot open local file for writing: %1").arg(localPath));
-            return false;
+    if (localPath == QLatin1String("-")) {
+        m_file = std::make_unique<QFile>();
+        if (mode == Mode::Download) {
+            if (!m_file->open(1, QIODevice::WriteOnly)) {
+                fail(QStringLiteral("Cannot open stdout for writing"));
+                return false;
+            }
+        } else {
+            if (!m_file->open(0, QIODevice::ReadOnly)) {
+                fail(QStringLiteral("Cannot open stdin for reading"));
+                return false;
+            }
+            m_totalBytes = -1;
         }
     } else {
-        if (!m_file->open(QIODevice::ReadOnly)) {
-            fail(QStringLiteral("Cannot open local file for reading: %1").arg(localPath));
-            return false;
+        m_file = std::make_unique<QFile>(localPath);
+        if (mode == Mode::Download) {
+            if (!m_file->open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+                fail(QStringLiteral("Cannot open local file for writing: %1").arg(localPath));
+                return false;
+            }
+        } else {
+            if (!m_file->open(QIODevice::ReadOnly)) {
+                fail(QStringLiteral("Cannot open local file for reading: %1").arg(localPath));
+                return false;
+            }
+            m_totalBytes = m_file->size();
         }
-        m_totalBytes = m_file->size();
     }
 
     m_socket = std::make_unique<QUdpSocket>(this);
@@ -89,7 +106,7 @@ void TftpClient::sendInitialRequest() {
         opts.insert(QLatin1String(kOptBlksize), QString::number(clampBlockSize(m_requestedBlockSize)));
         m_optionsRequested = true;
     }
-    if (m_mode == Mode::Upload) {
+    if (m_mode == Mode::Upload && m_totalBytes >= 0) {
         // Advertise the transfer size so the server can pre-flight (RFC 2349).
         opts.insert(QLatin1String(kOptTsize), QString::number(m_totalBytes));
         m_optionsRequested = true;
@@ -98,6 +115,11 @@ void TftpClient::sendInitialRequest() {
     const int timeoutSecs = m_timeoutMs / 1000;
     if (timeoutSecs >= 1 && timeoutSecs <= 255 && m_timeoutMs != 5000) {
         opts.insert(QLatin1String(kOptTimeout), QString::number(timeoutSecs));
+        m_optionsRequested = true;
+    }
+
+    if (m_requestedWindowSize != 1) {
+        opts.insert(QLatin1String(kOptWindowsize), QString::number(qBound(1, m_requestedWindowSize, 64)));
         m_optionsRequested = true;
     }
 
@@ -120,6 +142,12 @@ void TftpClient::applyOack(const Options &options) {
         qint64 ts = options.value(QLatin1String(kOptTsize)).toLongLong(&ok);
         if (ok)
             m_totalBytes = ts;
+    }
+    if (options.contains(QLatin1String(kOptWindowsize))) {
+        bool ok = false;
+        int ws = options.value(QLatin1String(kOptWindowsize)).toInt(&ok);
+        if (ok && ws >= 1 && ws <= 64)
+            m_windowSize = ws;
     }
 }
 
@@ -194,7 +222,7 @@ void TftpClient::handleData(quint16 block, const QByteArray &payload) {
     m_awaitingFirstReply = false;
     const auto expected = quint16(m_block + 1);
 
-    if (block == m_block) {
+    if (block == quint16(m_block)) {
         // Duplicate — re-ACK without rewriting.
         m_socket->writeDatagram(buildAck(block), m_serverAddr, m_serverPort);
         return;
@@ -206,7 +234,7 @@ void TftpClient::handleData(quint16 block, const QByteArray &payload) {
         fail(QStringLiteral("Local write failed"));
         return;
     }
-    m_block = block;
+    m_block++;
     m_bytesTransferred += payload.size();
     m_retries = 0;
     emit progress(m_bytesTransferred, m_totalBytes);
@@ -224,14 +252,16 @@ void TftpClient::handleData(quint16 block, const QByteArray &payload) {
 
 // Upload logic
 
-void TftpClient::sendDataBlock(quint16 block) {
-    const qint64 offset = qint64(block - 1) * m_blockSize;
-    m_file->seek(offset);
+void TftpClient::sendDataBlock(qint64 block) {
+    if (!m_file->isSequential()) {
+        const qint64 offset = (block - 1) * m_blockSize;
+        m_file->seek(offset);
+    }
     QByteArray payload = m_file->read(m_blockSize);
 
     m_block = block;
     m_lastBlockSent = payload.size() < m_blockSize;
-    m_lastPacket = buildData(block, payload);
+    m_lastPacket = buildData(quint16(block), payload);
     m_socket->writeDatagram(m_lastPacket, m_serverAddr, m_serverPort);
     armRetransmit();
 }
@@ -246,18 +276,18 @@ void TftpClient::handleAck(quint16 block) {
         return;
     }
 
-    if (block != m_block)
+    if (block != quint16(m_block))
         return;  // Stale/duplicate ACK.
 
     m_retries = 0;
-    m_bytesTransferred = qMin<qint64>(qint64(block) * m_blockSize, m_totalBytes < 0 ? qint64(block) * m_blockSize : m_totalBytes);
+    m_bytesTransferred = qMin<qint64>(m_block * m_blockSize, m_totalBytes < 0 ? m_block * m_blockSize : m_totalBytes);
     emit progress(m_bytesTransferred, m_totalBytes);
 
     if (m_lastBlockSent) {
         succeed();
         return;
     }
-    sendDataBlock(block + 1);
+    sendDataBlock(m_block + 1);
 }
 
 // Timing and teardown

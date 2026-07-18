@@ -30,16 +30,16 @@ sudo snap install aethertftp
 You can download pre-compiled packages directly from the [GitHub Releases Page](https://github.com/beratatmaca/AetherTFTP/releases) for easy installation:
 
 * **Linux**: Download the `.deb` package (Debian/Ubuntu-based systems).
-* **Windows**: Download the `.msi` installer.
+* **Windows**: Download the `.msi` installer, or the portable `.zip` (no installation — unzip and run; bundles Qt and the MSVC runtime, so nothing else is required on the target machine).
 * **macOS**: Download the `.dmg` package.
 
 ## Screenshots
 
 ### Graphical User Interface (GUI)
 
-AetherTFTP provides an intuitive graphical interface featuring tabbed access to Client settings, Server controls, and a Dashboard overview:
+AetherTFTP provides a graphical interface: a left panel switches between **Client** and **Server** configuration — you're usually driving one or minding the other, rarely both at once — while a live dashboard, the transfer list, and the activity log stay visible on the right at all times:
 
-|                  Client Tab                  |                  Server Tab                  |
+|                 Client Panel                 |                 Server Panel                 |
 | :------------------------------------------: | :------------------------------------------: |
 | ![Client View](assets/screenshot_client.png) | ![Server View](assets/screenshot_server.png) |
 
@@ -63,9 +63,9 @@ The architecture separates the core protocol logic from the presentation layer, 
  └──────────────────────────┘       └──────────────────────────┘
 ```
 
-- **`tftp_protocol`**: A pure data serialization and deserialization layer, operating independently of sockets and threads.
-- **`TftpSession`**: Manages the lifecycle of an individual transfer thread-safely, controlling block counters, window flow, timeout retransmissions, and file stream states.
-- **`TftpServer`**: A listener socket that accepts incoming requests and spawns isolated, transaction-specific sessions.
+* **`tftp_protocol`**: A pure data serialization and deserialization layer, operating independently of sockets and threads.
+* **`TftpSession`**: Manages the lifecycle of an individual transfer thread-safely, controlling block counters, window flow, timeout retransmissions, and file stream states.
+* **`TftpServer`**: A listener socket that accepts incoming requests and spawns isolated, transaction-specific sessions.
 
 ---
 
@@ -75,9 +75,9 @@ The architecture separates the core protocol logic from the presentation layer, 
 
 To build AetherTFTP, you will need:
 
-- **CMake** (v3.16 or higher)
-- **Qt6 SDK** (specifically the `Core`, `Network`, and `Test` modules)
-- **C++17 compliant compiler** (GCC 10+, Clang 12+, or MSVC 2019+)
+* **CMake** (v3.16 or higher)
+* **Qt6 SDK** (specifically the `Core`, `Network`, and `Test` modules)
+* **C++17 compliant compiler** (GCC 10+, Clang 12+, or MSVC 2019+)
 
 ### Build Instructions
 
@@ -107,17 +107,17 @@ ctest --test-dir build --output-on-failure
 
 AetherTFTP uses an **auto-incrementing version** of the form `MAJOR.MINOR.PATCH.BUILD`:
 
-- **`MAJOR.MINOR.PATCH`** — the semantic base, kept in the top-level [`VERSION`](VERSION) file. Bump it by hand for meaningful releases.
-- **`BUILD`** — the git commit count (`git rev-list --count HEAD`), which increases automatically with every commit/merge to `main`, so each build gets a unique, monotonically increasing version with no manual edits.
+* **`MAJOR.MINOR.PATCH`** — the semantic base, kept in the top-level [`VERSION`](VERSION) file. Bump it by hand for meaningful releases.
+* **`BUILD`** — the git commit count (`git rev-list --count HEAD`), which increases automatically with every commit/merge to `main`, so each build gets a unique, monotonically increasing version with no manual edits.
 
 The version is the single source of truth across the whole project:
 
-| Surface                             | How it gets the version                                   |
-| ----------------------------------- | --------------------------------------------------------- |
-| CMake (`PROJECT_VERSION`)           | `cmake/Version.cmake` resolves it before `project()`      |
-| The binary (`aethertftp --version`) | generated `aether/version.h` (e.g. `0.1.0.42 (g1a2b3c4)`) |
-| Packages (`.deb` / `.msi` / `.dmg`) | CPack uses the same full version in filenames             |
-| GitHub release page                 | the `version` job in `release.yml`                        |
+| Surface                                      | How it gets the version                                   |
+| -------------------------------------------- | --------------------------------------------------------- |
+| CMake (`PROJECT_VERSION`)                    | `cmake/Version.cmake` resolves it before `project()`      |
+| The binary (`aethertftp --version`)          | generated `aether/version.h` (e.g. `0.1.0.42 (g1a2b3c4)`) |
+| Packages (`.deb` / `.msi` / `.zip` / `.dmg`) | CPack uses the same full version in filenames             |
+| GitHub release page                          | the `version` job in `release.yml`                        |
 
 ```bash
 # Inspect the resolved version of a build:
@@ -135,8 +135,8 @@ cmake -B build -DAETHER_BUILD_NUMBER=42 -DAETHER_GIT_SHA=1a2b3c4
 
 The release pipeline ([`release.yml`](.github/workflows/release.yml)) computes the version once and shares it with every build job and the release page:
 
-- **Push to `main`** → packages are built for Linux/macOS/Windows and published to the rolling **`latest`** pre-release, whose name and notes show the current incrementing version (e.g. *AetherTFTP v0.1.0.42 (latest main)*).
-- **Push a `vX.Y.Z` tag** → a normal (non-pre-release) GitHub Release named after the tag. To cut one, set `VERSION` to `X.Y.Z`, commit, then:
+* **Push to `main`** → packages are built for Linux/macOS/Windows and published to the rolling **`latest`** pre-release, whose name and notes show the current incrementing version (e.g. *AetherTFTP v0.1.0.42 (latest main)*).
+* **Push a `vX.Y.Z` tag** → a normal (non-pre-release) GitHub Release named after the tag. To cut one, set `VERSION` to `X.Y.Z`, commit, then:
 
   ```bash
   git tag v0.2.0 && git push origin v0.2.0

@@ -13,11 +13,11 @@ namespace tftp {
 
 struct TftpSession::ReadTask : public QRunnable {
     QPointer<TftpSession> session;
-    quint16 block;
+    qint64 block;
     qint64 offset;
     int blockSize;
 
-    ReadTask(TftpSession *s, quint16 b, qint64 o, int sz) : session(s), block(b), offset(o), blockSize(sz) { setAutoDelete(true); }
+    ReadTask(TftpSession *s, qint64 b, qint64 o, int sz) : session(s), block(b), offset(o), blockSize(sz) { setAutoDelete(true); }
 
     void run() override {
         QByteArray payload;
@@ -47,10 +47,10 @@ struct TftpSession::ReadTask : public QRunnable {
 
 struct TftpSession::WriteTask : public QRunnable {
     QPointer<TftpSession> session;
-    quint16 block;
+    qint64 block;
     QByteArray payload;
 
-    WriteTask(TftpSession *s, quint16 b, QByteArray p) : session(s), block(b), payload(std::move(p)) { setAutoDelete(true); }
+    WriteTask(TftpSession *s, qint64 b, QByteArray p) : session(s), block(b), payload(std::move(p)) { setAutoDelete(true); }
 
     void run() override {
         bool ok = false;
@@ -175,6 +175,15 @@ Options TftpSession::negotiateOptions(qint64 fileSize) {
                 m_totalBytes = declared;
                 accepted.insert(QLatin1String(kOptTsize), QString::number(declared));
             }
+        }
+    }
+
+    if (m_request.options.contains(QLatin1String(kOptWindowsize))) {
+        bool ok = false;
+        int requested = m_request.options.value(QLatin1String(kOptWindowsize)).toInt(&ok);
+        if (ok && requested >= 1) {
+            m_windowSize = qMin(requested, 64);
+            accepted.insert(QLatin1String(kOptWindowsize), QString::number(m_windowSize));
         }
     }
 
@@ -303,22 +312,22 @@ qint64 TftpSession::requestSessionDelay(qint64 packetSize) {
 
 // RRQ: we are sending the file
 
-void TftpSession::sendDataBlock(quint16 block) {
+void TftpSession::sendDataBlock(qint64 block) {
     if (!m_file)
         return;
 
-    const qint64 offset = qint64(block - 1) * m_blockSize;
+    const qint64 offset = (block - 1) * m_blockSize;
     QThreadPool::globalInstance()->start(new ReadTask(this, block, offset, m_blockSize));
 }
 
-void TftpSession::onDataBlockRead(quint16 block, const QByteArray &payload, bool ok) {
+void TftpSession::onDataBlockRead(qint64 block, const QByteArray &payload, bool ok) {
     if (!ok || m_finished)
         return;
 
     m_currentBlock = block;
     m_oackPending = false;
     m_sentLastBlock = payload.size() < m_blockSize;
-    m_lastPacket = buildData(block, payload);
+    m_lastPacket = buildData(quint16(block), payload);
     sendPacketDeferred(m_lastPacket, true);
 }
 
@@ -331,32 +340,32 @@ void TftpSession::handleAck(quint16 block) {
         return;
     }
 
-    if (block != m_currentBlock)
+    if (block != quint16(m_currentBlock))
         return;
 
     m_retries = 0;
-    m_bytesTransferred = qMin<qint64>(qint64(block) * m_blockSize, m_totalBytes < 0 ? qint64(block) * m_blockSize : m_totalBytes);
+    m_bytesTransferred = qMin<qint64>(m_currentBlock * m_blockSize, m_totalBytes < 0 ? m_currentBlock * m_blockSize : m_totalBytes);
     emit progress(m_bytesTransferred, m_totalBytes);
 
     if (m_sentLastBlock) {
         finish(true, QString());
         return;
     }
-    sendDataBlock(block + 1);
+    sendDataBlock(m_currentBlock + 1);
 }
 
 // WRQ: we are receiving the file
 
-void TftpSession::sendAck(quint16 block) {
+void TftpSession::sendAck(qint64 block) {
     m_currentBlock = block;
-    m_lastPacket = buildAck(block);
+    m_lastPacket = buildAck(quint16(block));
     sendPacketDeferred(m_lastPacket, !m_finished);
 }
 
 void TftpSession::handleData(quint16 block, const QByteArray &payload) {
     const auto expected = quint16(m_currentBlock + 1);
 
-    if (block == m_currentBlock) {
+    if (block == quint16(m_currentBlock)) {
         m_lastPacket = buildAck(block);
         sendPacketDeferred(m_lastPacket, false);
         return;
@@ -367,10 +376,10 @@ void TftpSession::handleData(quint16 block, const QByteArray &payload) {
     if (m_oackPending)
         m_oackPending = false;
 
-    QThreadPool::globalInstance()->start(new WriteTask(this, block, payload));
+    QThreadPool::globalInstance()->start(new WriteTask(this, m_currentBlock + 1, payload));
 }
 
-void TftpSession::onDataBlockWritten(quint16 block, int size, bool ok) {
+void TftpSession::onDataBlockWritten(qint64 block, int size, bool ok) {
     if (m_finished)
         return;
 

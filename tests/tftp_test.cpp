@@ -2,6 +2,7 @@
 
 #include <QSignalSpy>
 #include <QTemporaryDir>
+#include <QTemporaryFile>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QTcpSocket>
@@ -10,6 +11,7 @@
 #include <QProcess>
 #include <QStandardPaths>
 #include <QTimer>
+#include <unistd.h>
 
 #include "core/tftp_client.h"
 #include "core/tftp_protocol.h"
@@ -40,12 +42,15 @@ private slots:
     // End-to-end loopback transfers.
     void testDownloadDefaultBlockSize();
     void testBlockSizeNegotiation();
+    void testWindowSizeNegotiation();
+    void testBlockRollover();
     void testUploadRoundTrip();
     void testUploadOverwriteRejected();
     void testLargeMultiBlockTransfer();
     void testMissingFileError();
     void testPathTraversalRejected();
     void testAcls();
+    void testPathSecurityPolicy();
     void testSymlinkPathTraversal();
     void testIpv6Binding();
     void testSinglePortMultiplexing();
@@ -54,6 +59,9 @@ private slots:
     void testPrometheusExporter();
     void testMetricsExporterHardening();
     void testCliRunnerUploadDownload();
+    void testCliRunnerPiping();
+    void testFuzzProtocolParsing();
+    void testPacketLossSimulation();
     void testTransferAbort();
     void testAgainstTftpHpa();
 
@@ -193,6 +201,47 @@ void TFTPProtocolTest::testBlockSizeNegotiation() {
     QCOMPARE(out.readAll(), data);
 }
 
+void TFTPProtocolTest::testWindowSizeNegotiation() {
+    const QByteArray data = makePayload(1000, 10);
+    QVERIFY(!writeServerFile(QStringLiteral("window.bin"), data).isEmpty());
+
+    TftpClient client;
+    client.setWindowSize(8);  // Request windowsize option
+    const QString outPath = m_clientDir.path() + QStringLiteral("/window.out");
+    QSignalSpy spy(&client, &TftpClient::transferFinished);
+    client.downloadFile(QStringLiteral("127.0.0.1"), m_port, QStringLiteral("window.bin"), outPath);
+    QVERIFY(spy.wait(5000));
+    QCOMPARE(spy.takeFirst().at(0).toBool(), true);
+    QCOMPARE(client.negotiatedWindowSize(), 8);
+
+    QFile out(outPath);
+    QVERIFY(out.open(QIODevice::ReadOnly));
+    QCOMPARE(out.readAll(), data);
+}
+
+void TFTPProtocolTest::testBlockRollover() {
+    // Generate a payload that causes a 16-bit block counter rollover.
+    // Minimum blocksize is 8 bytes.
+    // 65535 blocks * 8 bytes = 524280 bytes.
+    // We send 524300 bytes, which requires 65538 blocks, forcing a rollover.
+    const int rolloverSize = 524300;
+    const QByteArray data = makePayload(rolloverSize, 12);
+    QVERIFY(!writeServerFile(QStringLiteral("rollover.bin"), data).isEmpty());
+
+    TftpClient client;
+    client.setBlockSize(8);
+    const QString outPath = m_clientDir.path() + QStringLiteral("/rollover.out");
+    QSignalSpy spy(&client, &TftpClient::transferFinished);
+    client.downloadFile(QStringLiteral("127.0.0.1"), m_port, QStringLiteral("rollover.bin"), outPath);
+    // Large number of small packets might take slightly longer, give it 10 seconds.
+    QVERIFY(spy.wait(10000));
+    QCOMPARE(spy.takeFirst().at(0).toBool(), true);
+
+    QFile out(outPath);
+    QVERIFY(out.open(QIODevice::ReadOnly));
+    QCOMPARE(out.readAll(), data);
+}
+
 void TFTPProtocolTest::testUploadRoundTrip() {
     const QByteArray data = makePayload(5000, 3);
     const QString srcPath = m_clientDir.path() + QStringLiteral("/upload_src.bin");
@@ -323,6 +372,87 @@ void TFTPProtocolTest::testAcls() {
         QCOMPARE(spy.takeFirst().at(0).toBool(), false);
     }
     m_server->setWhitelist({});
+}
+
+void TFTPProtocolTest::testPathSecurityPolicy() {
+    // 1. Extension Whitelisting / Blacklisting
+    m_server->setAllowedExtensions({QStringLiteral("txt"), QStringLiteral("bin")});
+    m_server->setBlockedExtensions({QStringLiteral("exe")});
+
+    // Write allowed and blocked file extensions
+    QVERIFY(!writeServerFile(QStringLiteral("ok.bin"), "allowed bin file").isEmpty());
+    QVERIFY(!writeServerFile(QStringLiteral("bad.exe"), "blocked exe file").isEmpty());
+    QVERIFY(!writeServerFile(QStringLiteral("other.png"), "unlisted png file").isEmpty());
+
+    // Downloading allowed suffix should succeed
+    {
+        TftpClient client;
+        const QString outPath = m_clientDir.path() + QStringLiteral("/ok.out");
+        QSignalSpy spy(&client, &TftpClient::transferFinished);
+        client.downloadFile(QStringLiteral("127.0.0.1"), m_port, QStringLiteral("ok.bin"), outPath);
+        QVERIFY(spy.wait(5000));
+        QCOMPARE(spy.takeFirst().at(0).toBool(), true);
+    }
+
+    // Downloading explicitly blocked suffix should fail
+    {
+        TftpClient client;
+        const QString outPath = m_clientDir.path() + QStringLiteral("/bad.out");
+        QSignalSpy spy(&client, &TftpClient::transferFinished);
+        client.downloadFile(QStringLiteral("127.0.0.1"), m_port, QStringLiteral("bad.exe"), outPath);
+        QVERIFY(spy.wait(5000));
+        QCOMPARE(spy.takeFirst().at(0).toBool(), false);
+    }
+
+    // Downloading unlisted suffix should fail because we have an allowed whitelist
+    {
+        TftpClient client;
+        const QString outPath = m_clientDir.path() + QStringLiteral("/other.out");
+        QSignalSpy spy(&client, &TftpClient::transferFinished);
+        client.downloadFile(QStringLiteral("127.0.0.1"), m_port, QStringLiteral("other.png"), outPath);
+        QVERIFY(spy.wait(5000));
+        QCOMPARE(spy.takeFirst().at(0).toBool(), false);
+    }
+
+    // Reset extension policies
+    m_server->setAllowedExtensions({});
+    m_server->setBlockedExtensions({});
+
+    // 2. Configurable Read-Only Directories (only block WRQ)
+    QDir serverDir(m_serverDir.path());
+    QVERIFY(serverDir.mkdir(QStringLiteral("restricted_dir")));
+    m_server->setReadOnlyDirectories({QStringLiteral("restricted_dir")});
+
+    // Populate a file inside the restricted directory
+    QVERIFY(!writeServerFile(QStringLiteral("restricted_dir/read.txt"), "read content").isEmpty());
+
+    // Reading (RRQ) from restricted directory should succeed
+    {
+        TftpClient client;
+        const QString outPath = m_clientDir.path() + QStringLiteral("/restricted_read.out");
+        QSignalSpy spy(&client, &TftpClient::transferFinished);
+        client.downloadFile(QStringLiteral("127.0.0.1"), m_port, QStringLiteral("restricted_dir/read.txt"), outPath);
+        QVERIFY(spy.wait(5000));
+        QCOMPARE(spy.takeFirst().at(0).toBool(), true);
+    }
+
+    // Writing (WRQ) to restricted directory should fail
+    {
+        const QString srcPath = m_clientDir.path() + QStringLiteral("/write_src.bin");
+        QFile src(srcPath);
+        QVERIFY(src.open(QIODevice::WriteOnly));
+        src.write("restricted upload test");
+        src.close();
+
+        TftpClient client;
+        QSignalSpy spy(&client, &TftpClient::transferFinished);
+        client.uploadFile(QStringLiteral("127.0.0.1"), m_port, srcPath, QStringLiteral("restricted_dir/upload.txt"));
+        QVERIFY(spy.wait(5000));
+        QCOMPARE(spy.takeFirst().at(0).toBool(), false);
+    }
+
+    // Reset read-only directories
+    m_server->setReadOnlyDirectories({});
 }
 
 void TFTPProtocolTest::testSymlinkPathTraversal() {
@@ -689,6 +819,99 @@ void TFTPProtocolTest::testCliRunnerUploadDownload() {
     QStringList serverArgs = {"--server", "--port", "12347", "--dir", cliServerDir.path(), "--bind", "127.0.0.1"};
     int serverResult = CliRunner::run(*qApp, serverArgs);
     QCOMPARE(serverResult, 0);
+}
+
+void TFTPProtocolTest::testCliRunnerPiping() {
+    const QByteArray downloadData = "Pipe transfer verification!";
+    QVERIFY(!writeServerFile(QStringLiteral("pipe.txt"), downloadData).isEmpty());
+
+    // Temporarily disable message handler so QTest doesn't capture logging to stdout
+    auto oldHandler = qInstallMessageHandler([](QtMsgType, const QMessageLogContext &, const QString &) {});
+
+    // Redirect stdout to a temporary file
+    QTemporaryFile tempOut;
+    QVERIFY(tempOut.open());
+    int oldStdout = dup(1);
+    dup2(tempOut.handle(), 1);
+
+    TftpClient client;
+    QSignalSpy spy(&client, &TftpClient::transferFinished);
+    client.downloadFile(QStringLiteral("127.0.0.1"), m_port, QStringLiteral("pipe.txt"), QStringLiteral("-"));
+    QVERIFY(spy.wait(5000));
+    QCOMPARE(spy.takeFirst().at(0).toBool(), true);
+
+    // Restore stdout and message handler
+    fflush(stdout);
+    dup2(oldStdout, 1);
+    ::close(oldStdout);
+    qInstallMessageHandler(oldHandler);
+
+    tempOut.seek(0);
+    QCOMPARE(tempOut.readAll(), downloadData);
+}
+
+void TFTPProtocolTest::testFuzzProtocolParsing() {
+    QList<QByteArray> inputs;
+    inputs.append(QByteArray());
+    inputs.append(QByteArray("\x00", 1));
+    inputs.append(QByteArray("\x00\x01", 2));
+    inputs.append(QByteArray("\x00\x05\x00\x01", 4));
+    inputs.append(QByteArray("\x00\x03\x00", 3));
+    inputs.append(QByteArray("\x00\x04\x00\x05", 4));
+
+    for (int i = 0; i < 50; ++i) {
+        QByteArray garbage;
+        int len = QRandomGenerator::global()->bounded(100) + 1;
+        garbage.resize(len);
+        for (int j = 0; j < len; ++j) {
+            garbage[j] = char(QRandomGenerator::global()->bounded(256));
+        }
+        inputs.append(garbage);
+    }
+
+    for (const QByteArray &in : inputs) {
+        Request req;
+        parseRequest(in, req);
+
+        quint16 block = 0;
+        QByteArray payload;
+        parseData(in, block, payload);
+
+        parseAck(in, block);
+
+        ErrorCode errCode;
+        QString errMsg;
+        parseError(in, errCode, errMsg);
+
+        Options opts;
+        parseOack(in, opts);
+    }
+}
+
+void TFTPProtocolTest::testPacketLossSimulation() {
+    m_server->setSinglePortMode(true);
+    m_server->setPacketDropRate(0.05);  // Drop 5% of packets
+
+    const QByteArray data = makePayload(5000, 101);
+    QVERIFY(!writeServerFile(QStringLiteral("loss.bin"), data).isEmpty());
+
+    TftpClient client;
+    client.setBlockSize(512);
+    client.setTimeout(1000);  // 1000 ms timeout to handle slow ASan/CI environments safely
+
+    const QString outPath = m_clientDir.path() + QStringLiteral("/loss.out");
+    QSignalSpy spy(&client, &TftpClient::transferFinished);
+    client.downloadFile(QStringLiteral("127.0.0.1"), m_port, QStringLiteral("loss.bin"), outPath);
+
+    QVERIFY(spy.wait(10000));
+    QCOMPARE(spy.takeFirst().at(0).toBool(), true);
+
+    QFile out(outPath);
+    QVERIFY(out.open(QIODevice::ReadOnly));
+    QCOMPARE(out.readAll(), data);
+
+    m_server->setSinglePortMode(false);
+    m_server->setPacketDropRate(0.0);
 }
 
 void TFTPProtocolTest::testTransferAbort() {

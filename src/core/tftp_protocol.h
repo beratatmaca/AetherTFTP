@@ -45,9 +45,10 @@ enum class ErrorCode : quint8 {
 constexpr const char *kModeOctet = "octet";        ///< Octet (binary) mode, RFC 1350 §1.
 constexpr const char *kModeNetascii = "netascii";  ///< netascii mode (out of scope).
 
-constexpr const char *kOptBlksize = "blksize";  ///< Blocksize option key (RFC 2348).
-constexpr const char *kOptTimeout = "timeout";  ///< Timeout option key (RFC 2349).
-constexpr const char *kOptTsize = "tsize";      ///< Transfer-size option key (RFC 2349).
+constexpr const char *kOptBlksize = "blksize";        ///< Blocksize option key (RFC 2348).
+constexpr const char *kOptTimeout = "timeout";        ///< Timeout option key (RFC 2349).
+constexpr const char *kOptTsize = "tsize";            ///< Transfer-size option key (RFC 2349).
+constexpr const char *kOptWindowsize = "windowsize";  ///< Windowsize option key (RFC 7440).
 
 constexpr int kDefaultBlockSize = 512;  ///< RFC 1350 fixed block size.
 constexpr int kMinBlockSize = 8;        ///< RFC 2348 lower bound.

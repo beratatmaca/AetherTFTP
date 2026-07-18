@@ -63,7 +63,7 @@ jobs:
           - os: macos-latest
             artifact-name: "AetherTFTP-macOS-DMG"
           - os: windows-latest
-            artifact-name: "AetherTFTP-Windows-MSI"
+            artifact-name: "AetherTFTP-Windows"
 
     steps:
       - name: Checkout Source Code
@@ -128,6 +128,18 @@ jobs:
           cd build
           cpack -G WIX
 
+      # Windows Packaging: portable (no-install) ZIP. Reuses the same
+      # install() rules as the MSI — including the windeployqt step above —
+      # so the archive is a self-contained, unzip-and-run folder.
+      - name: Generate Portable ZIP (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          cd build
+          cpack -G ZIP
+          $zip = Get-ChildItem -Filter "*.zip" | Select-Object -First 1
+          Rename-Item $zip.FullName "AetherTFTP-Windows-Portable.zip"
+
       # macOS Deployment and Packaging
       - name: Package app (macOS)
         if: matrix.os == 'macos-latest'
@@ -160,7 +172,7 @@ jobs:
       - name: Flatten Artifact Directory
         run: |
           mkdir -p release-files
-          find artifacts -type f \( -name "*.deb" -o -name "*.dmg" -o -name "*.msi" \) -exec cp {} release-files/ \;
+          find artifacts -type f \( -name "*.deb" -o -name "*.dmg" -o -name "*.msi" -o -name "*.zip" \) -exec cp {} release-files/ \;
           ls -la release-files/
 
       - name: Publish GitHub Release

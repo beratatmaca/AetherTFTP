@@ -11,6 +11,8 @@
 #include <QJsonObject>
 #include <QDateTime>
 #include <QTextStream>
+#include <QDebug>
+#include <QRandomGenerator>
 #include <algorithm>
 #include <cmath>
 
@@ -128,6 +130,73 @@ bool TftpServer::isAllowed(const QHostAddress &clientAddress, bool isUpload) con
     return true;
 }
 
+void TftpServer::setAllowedExtensions(const QList<QString> &extensions) {
+    m_allowedExtensions.clear();
+    for (const QString &ext : extensions) {
+        m_allowedExtensions.append(ext.trimmed().toLower());
+    }
+}
+
+void TftpServer::setBlockedExtensions(const QList<QString> &extensions) {
+    m_blockedExtensions.clear();
+    for (const QString &ext : extensions) {
+        m_blockedExtensions.append(ext.trimmed().toLower());
+    }
+}
+
+void TftpServer::setReadOnlyDirectories(const QList<QString> &dirs) {
+    m_readOnlyDirs.clear();
+    for (const QString &dir : dirs) {
+        m_readOnlyDirs.append(QDir::cleanPath(dir));
+    }
+}
+
+bool TftpServer::isPathAllowed(const QString &filename, const QString &resolvedPath, bool isUpload) const {
+    const QString suffix = QFileInfo(filename).suffix().toLower();
+    if (!m_allowedExtensions.isEmpty()) {
+        bool allowed = false;
+        for (const QString &ext : m_allowedExtensions) {
+            if (suffix == ext) {
+                allowed = true;
+                break;
+            }
+        }
+        if (!allowed)
+            return false;
+    }
+    for (const QString &ext : m_blockedExtensions) {
+        if (suffix == ext) {
+            return false;
+        }
+    }
+
+    if (isUpload && !m_readOnlyDirs.isEmpty()) {
+        for (const QString &dir : m_readOnlyDirs) {
+            QString canonicalDir;
+            if (QDir::isAbsolutePath(dir)) {
+                canonicalDir = QFileInfo(dir).canonicalFilePath();
+            } else {
+                canonicalDir = resolveSafePath(dir);
+            }
+            if (!canonicalDir.isEmpty()) {
+#ifdef Q_OS_WIN
+                const QString resolvedLower = resolvedPath.toLower();
+                const QString dirLower = canonicalDir.toLower();
+                if (resolvedLower == dirLower || resolvedLower.startsWith(dirLower + QDir::separator())) {
+                    return false;
+                }
+#else
+                if (resolvedPath == canonicalDir || resolvedPath.startsWith(canonicalDir + QDir::separator())) {
+                    return false;
+                }
+#endif
+            }
+        }
+    }
+
+    return true;
+}
+
 QString TftpServer::resolveSafePath(const QString &filename) const {
     const QString canonicalRoot = QFileInfo(m_rootDir).canonicalFilePath();
     if (canonicalRoot.isEmpty())
@@ -168,6 +237,9 @@ QString TftpServer::resolveSafePath(const QString &filename) const {
 }
 
 void TftpServer::sendSessionPacket(const QByteArray &packet, const QHostAddress &address, quint16 port) {
+    if (m_packetDropRate > 0.0 && QRandomGenerator::global()->generateDouble() < m_packetDropRate) {
+        return;  // Simulate packet loss
+    }
     if (m_socket) {
         m_socket->writeDatagram(packet, address, port);
     }
@@ -179,6 +251,10 @@ void TftpServer::onReadyRead() {
         QHostAddress sender;
         quint16 senderPort = 0;
         m_socket->readDatagram(buf.data(), buf.size(), &sender, &senderPort);
+
+        if (m_packetDropRate > 0.0 && QRandomGenerator::global()->generateDouble() < m_packetDropRate) {
+            continue;  // Simulate packet loss (incoming)
+        }
 
         const QString key = sender.toString() + QLatin1Char(':') + QString::number(senderPort);
         if (m_sessions.contains(key)) {
@@ -209,6 +285,14 @@ void TftpServer::onReadyRead() {
             m_socket->writeDatagram(err, sender, senderPort);
             logEvent(QStringLiteral("transfer_rejected"), key, clientIp, req.filename, 0, QStringLiteral("failure"),
                      QStringLiteral("Access violation"));
+            continue;
+        }
+
+        if (!isPathAllowed(req.filename, safePath, isUpload)) {
+            QByteArray err = buildError(ErrorCode::AccessViolation, QStringLiteral("Access violation by security policy"));
+            m_socket->writeDatagram(err, sender, senderPort);
+            logEvent(QStringLiteral("transfer_rejected"), key, clientIp, req.filename, 0, QStringLiteral("failure"),
+                     QStringLiteral("Access violation by security policy"));
             continue;
         }
 
@@ -274,6 +358,10 @@ qint64 TftpServer::requestGlobalDelay(qint64 packetSize) {
 
 void TftpServer::logEvent(const QString &eventType, const QString &sessionId, const QString &clientIp, const QString &fileName,
                           int blockCount, const QString &status, const QString &message) {
+    QString logText;
+    const bool isError = (status == QLatin1String("failure") || eventType == QLatin1String("transfer_error") ||
+                          eventType == QLatin1String("transfer_rejected"));
+
     if (m_jsonLoggingEnabled) {
         QJsonObject obj;
         obj.insert(QStringLiteral("timestamp"), QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs));
@@ -287,24 +375,32 @@ void TftpServer::logEvent(const QString &eventType, const QString &sessionId, co
             obj.insert(QStringLiteral("message"), message);
         }
         QJsonDocument doc(obj);
-        emit logMessage(QString::fromUtf8(doc.toJson(QJsonDocument::Compact)));
+        logText = QString::fromUtf8(doc.toJson(QJsonDocument::Compact));
     } else {
         if (eventType == QLatin1String("server_start")) {
-            emit logMessage(message);
+            logText = message;
         } else if (eventType == QLatin1String("transfer_rejected")) {
             if (message.contains(QLatin1String("ACL"))) {
-                emit logMessage(QStringLiteral("Rejected by ACL: %1 from %2").arg(fileName, clientIp));
+                logText = QStringLiteral("Rejected by ACL: %1 from %2").arg(fileName, clientIp);
             } else {
-                emit logMessage(QStringLiteral("Rejected unsafe path: %1").arg(fileName));
+                logText = QStringLiteral("Rejected unsafe path: %1").arg(fileName);
             }
         } else if (eventType == QLatin1String("transfer_complete") || eventType == QLatin1String("transfer_error")) {
-            emit logMessage(
-                QStringLiteral("Transfer of %1 %2: %3")
-                    .arg(fileName, status == QLatin1String("success") ? QStringLiteral("OK") : QStringLiteral("FAILED"), message));
+            logText = QStringLiteral("Transfer of %1 %2: %3")
+                          .arg(fileName, status == QLatin1String("success") ? QStringLiteral("OK") : QStringLiteral("FAILED"), message);
         } else if (eventType == QLatin1String("transfer_start")) {
+            logText = QStringLiteral("Transfer started: %1 from %2").arg(fileName, clientIp);
         } else {
-            emit logMessage(QStringLiteral("[%1] %2 %3").arg(eventType, fileName, status));
+            logText = QStringLiteral("[%1] %2 %3").arg(eventType, fileName, status);
         }
+    }
+
+    emit logMessage(logText);
+
+    if (isError) {
+        qWarning() << "[server]" << logText;
+    } else {
+        qInfo() << "[server]" << logText;
     }
 }
 

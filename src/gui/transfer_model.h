@@ -116,13 +116,16 @@ private:
 };
 
 /**
- * @brief Renders the Progress column as a state-coloured progress bar.
+ * @brief Renders the Progress column as a state-coloured block ladder (a
+ *        row of discrete ticks, echoing TFTP's own lockstep block/ACK
+ *        transfer rather than a smooth stream).
  */
 class ProgressBarDelegate : public QStyledItemDelegate {
     Q_OBJECT
 public:
     using QStyledItemDelegate::QStyledItemDelegate;
     void paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const override;
+    QSize sizeHint(const QStyleOptionViewItem &option, const QModelIndex &index) const override;
 };
 
 /**

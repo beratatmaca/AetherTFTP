@@ -46,6 +46,14 @@ public:
     int negotiatedBlockSize() const { return m_blockSize; }
 
     /**
+     * @brief Set the window size to request for the next transfer (RFC 7440).
+     * @param windowSize Desired window size in packets; clamped to [1, 64].
+     */
+    void setWindowSize(int windowSize) { m_requestedWindowSize = windowSize; }
+    /** @return The window size agreed with the server (RFC 7440). */
+    int negotiatedWindowSize() const { return m_windowSize; }
+
+    /**
      * @brief Set the per-attempt retransmission timeout.
      * @param milliseconds Timeout in milliseconds; also offered to the server
      *        as the RFC 2349 @c timeout option (rounded to whole seconds).
@@ -120,7 +128,7 @@ private:
     void handleData(quint16 block, const QByteArray &payload);
     // Upload path.
     void handleAck(quint16 block);
-    void sendDataBlock(quint16 block);
+    void sendDataBlock(qint64 block);
 
     void armRetransmit();
     void fail(const QString &message);
@@ -140,11 +148,13 @@ private:
 
     int m_requestedBlockSize = kDefaultBlockSize;
     int m_blockSize = kDefaultBlockSize;
+    int m_requestedWindowSize = 1;
+    int m_windowSize = 1;
     int m_timeoutMs = 5000;
     int m_retries = 0;
     int m_maxRetries = 5;
 
-    quint16 m_block = 0;      ///< Download: last received; upload: last sent.
+    qint64 m_block = 0;       ///< Download: last received; upload: last sent.
     QByteArray m_lastPacket;  ///< Last datagram sent, for retransmission.
     bool m_optionsRequested = false;
     bool m_awaitingFirstReply = false;  ///< Expecting OACK or first DATA/ACK.

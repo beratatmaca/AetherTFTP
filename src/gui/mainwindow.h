@@ -12,8 +12,11 @@ class QPushButton;
 class QSpinBox;
 class QLabel;
 class QTreeView;
-class QTabWidget;
+class QStackedWidget;
+class QButtonGroup;
 class QCloseEvent;
+class QComboBox;
+class QCheckBox;
 
 namespace tftp {
 class TftpServer;
@@ -24,16 +27,19 @@ namespace tftp::gui {
 
 class TransferModel;
 class ThemeController;
+class SpeedChartWidget;
 
 /**
  * @brief The AetherTFTP main application window.
  *
- * A tabbed control surface: a **Client** tab (transfer controls + the live
- * transfer list with per-row cancel), a **Server** tab (embedded server
- * controls + activity log), and a **Dashboard** tab (metric cards). Transient
- * feedback goes to the status bar; the colour theme follows the OS (View →
- * Theme to override). Supports drag-and-drop upload. Transfers run on the GUI
- * thread's event loop — the core engine is fully asynchronous (no blocking).
+ * A single-page control surface: a left panel switches between **Client**
+ * and **Server** configuration (only one is shown at a time — you're
+ * usually driving one or minding the other, rarely both), while the right
+ * side keeps the live dashboard, transfer list, and activity log always
+ * visible. Transient feedback goes to the status bar; the colour theme
+ * follows the OS (View → Theme to override). Supports drag-and-drop upload.
+ * Transfers run on the GUI thread's event loop — the core engine is fully
+ * asynchronous (no blocking).
  */
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -51,18 +57,23 @@ protected:
     void closeEvent(QCloseEvent *event) override;
 
 private slots:
-    void toggleServer();           ///< Start or stop the embedded server.
-    void configureServer();        ///< Open the server settings dialog.
+    void toggleServer();  ///< Start or stop the embedded server.
+    void browseServerDir();
+    void applyServerConfig();
     void browseLocalFile();        ///< Pick a local file for the client controls.
     void startDownload();          ///< Begin a download using the client controls.
     void startUpload();            ///< Begin an upload using the client controls.
     void cancelTransfer(int row);  ///< Abort the transfer shown at @p row.
     void clearCompleted();         ///< Remove finished rows from the list.
+    void onProfileChanged(int index);
+    void saveCurrentProfile();
+    void deleteCurrentProfile();
+    void onServerProfileChanged(int index);
+    void saveCurrentServerProfile();
+    void deleteCurrentServerProfile();
 
 private:
-    QWidget *buildClientTab();
-    QWidget *buildServerTab();
-    QWidget *buildDashboardTab();
+    QWidget *buildMainView();
     QWidget *makeMetricCard(const QString &caption, QLabel **valueOut);
     void buildMenus();
 
@@ -92,17 +103,44 @@ private:
     quint16 m_serverPort = 6969;
     QString m_serverDir;
     int m_maxConcurrent = 4;
+    bool m_serverSinglePort = false;
+    bool m_serverJsonLogging = false;
+    QStringList m_serverAllowedExts;
+    QStringList m_serverBlockedExts;
+    QStringList m_serverReadOnlyDirs;
+    int m_serverGlobalLimit = 0;
+    int m_serverSessionLimit = 0;
 
     // Server controls.
+    QComboBox *m_serverProfileCombo = nullptr;
     QPushButton *m_serverToggleBtn = nullptr;
     QLabel *m_serverStatusLabel = nullptr;
+    QSpinBox *m_serverPortSpin = nullptr;
+    QLineEdit *m_serverDirEdit = nullptr;
+    QSpinBox *m_serverMaxSpin = nullptr;
+    QCheckBox *m_serverSinglePortCheck = nullptr;
+    QCheckBox *m_serverJsonLoggingCheck = nullptr;
+    QLineEdit *m_serverAllowedExtsEdit = nullptr;
+    QLineEdit *m_serverBlockedExtsEdit = nullptr;
+    QLineEdit *m_serverReadOnlyDirsEdit = nullptr;
+    QSpinBox *m_serverGlobalLimitSpin = nullptr;
+    QSpinBox *m_serverSessionLimitSpin = nullptr;
+
+    // Left panel: Client/Server config switch.
+    QStackedWidget *m_configStack = nullptr;
+    QButtonGroup *m_configModeGroup = nullptr;
 
     // Client controls.
+    QComboBox *m_profileCombo = nullptr;
     QLineEdit *m_hostEdit = nullptr;
     QSpinBox *m_clientPortSpin = nullptr;
     QLineEdit *m_fileEdit = nullptr;
     QSpinBox *m_blockSizeSpin = nullptr;
     QSpinBox *m_timeoutSpin = nullptr;
+    QSpinBox *m_windowSizeSpin = nullptr;
+
+    void loadProfileList();
+    void loadServerProfileList();
 
     // Dashboard metric value labels.
     QLabel *m_metricActive = nullptr;
@@ -115,10 +153,10 @@ private:
     QElapsedTimer m_metricsSpeedTimer;
 
     // Views.
-    QTabWidget *m_tabs = nullptr;
     TransferModel *m_model = nullptr;
     QTreeView *m_view = nullptr;
     QPlainTextEdit *m_log = nullptr;
+    SpeedChartWidget *m_speedChart = nullptr;
 
     // Theme.
     ThemeController *m_theme = nullptr;

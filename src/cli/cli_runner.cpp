@@ -128,6 +128,8 @@ int CliRunner::runTransfer(QCommandLineParser &parser, quint16 port, bool isPut)
 
     const QString host = parser.value(QStringLiteral("host"));
     const QString file = parser.value(QStringLiteral("file"));
+    const bool isPipe = (file == QLatin1String("-") ||
+                         (parser.isSet(QStringLiteral("output")) && parser.value(QStringLiteral("output")) == QLatin1String("-")));
 
     TftpClient client;
     if (parser.isSet(QStringLiteral("blocksize")))
@@ -139,12 +141,13 @@ int CliRunner::runTransfer(QCommandLineParser &parser, quint16 port, bool isPut)
         err() << "Error: " << m << "\n";
         err().flush();
     });
-    QObject::connect(&client, &TftpClient::progress, [](qint64 done, qint64 total) {
+    QObject::connect(&client, &TftpClient::progress, [isPipe](qint64 done, qint64 total) {
+        QTextStream &stream = isPipe ? err() : out();
         if (total > 0)
-            out() << "\r" << done << " / " << total << " bytes";
+            stream << "\r" << done << " / " << total << " bytes";
         else
-            out() << "\r" << done << " bytes";
-        out().flush();
+            stream << "\r" << done << " bytes";
+        stream.flush();
     });
 
     bool ok = false;
@@ -155,25 +158,29 @@ int CliRunner::runTransfer(QCommandLineParser &parser, quint16 port, bool isPut)
     });
 
     if (isPut) {
-        // For uploads, --file is the local file; the remote name is its
-        // basename. --output is ignored (get-only).
-        const QString remote = QFileInfo(file).fileName();
+        QString remote = QStringLiteral("upload_stdin.bin");
+        if (parser.isSet(QStringLiteral("output"))) {
+            remote = parser.value(QStringLiteral("output"));
+        } else if (file != QLatin1String("-")) {
+            remote = QFileInfo(file).fileName();
+        }
         client.uploadFile(host, port, file, remote);
     } else {
-        // For downloads, --file is the remote name. --output is the local
-        // destination; a directory (or default ".") receives the basename.
         const QString output = parser.isSet(QStringLiteral("output")) ? parser.value(QStringLiteral("output")) : QStringLiteral(".");
         QString localPath = output;
-        QFileInfo outInfo(output);
-        if (output.isEmpty() || outInfo.isDir() || output.endsWith(QLatin1Char('/')))
-            localPath = QDir(output.isEmpty() ? QStringLiteral(".") : output).filePath(QFileInfo(file).fileName());
+        if (output != QLatin1String("-")) {
+            QFileInfo outInfo(output);
+            if (output.isEmpty() || outInfo.isDir() || output.endsWith(QLatin1Char('/')))
+                localPath = QDir(output.isEmpty() ? QStringLiteral(".") : output).filePath(QFileInfo(file).fileName());
+        }
         client.downloadFile(host, port, file, localPath);
     }
 
     loop.exec();
 
-    out() << "\n" << (ok ? "Transfer complete" : "Transfer failed") << "\n";
-    out().flush();
+    QTextStream &finalStream = isPipe ? err() : out();
+    finalStream << "\n" << (ok ? "Transfer complete" : "Transfer failed") << "\n";
+    finalStream.flush();
     return ok ? 0 : 1;
 }
 
