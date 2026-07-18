@@ -173,6 +173,60 @@ bool parseOack(const QByteArray &datagram, Options &outOptions) {
     return true;
 }
 
+QByteArray toNetascii(const QByteArray &input) {
+    QByteArray output;
+    output.reserve(input.size());
+    for (int i = 0; i < input.size(); ++i) {
+        char c = input.at(i);
+        if (c == '\n') {
+            if (i == 0 || input.at(i - 1) != '\r') {
+                output.append('\r');
+            }
+            output.append('\n');
+        } else if (c == '\r') {
+            output.append('\r');
+            if (i + 1 == input.size() || input.at(i + 1) != '\n') {
+                output.append('\0');
+            }
+        } else {
+            output.append(c);
+        }
+    }
+    return output;
+}
+
+QByteArray fromNetascii(const QByteArray &input) {
+    QByteArray output;
+    output.reserve(input.size());
+    for (int i = 0; i < input.size(); ++i) {
+        char c = input.at(i);
+        if (c == '\r') {
+            if (i + 1 < input.size()) {
+                char next = input.at(i + 1);
+                if (next == '\n') {
+#ifdef Q_OS_WIN
+                    output.append('\r');
+                    output.append('\n');
+#else
+                    output.append('\n');
+#endif
+                    ++i;
+                } else if (next == '\0') {
+                    output.append('\r');
+                    ++i;
+                } else {
+                    output.append('\r');
+                }
+            } else {
+                output.append('\r');
+            }
+        } else {
+            output.append(c);
+        }
+    }
+    return output;
+}
+
 int clampBlockSize(int requested) {
     if (requested < kMinBlockSize)
         return kMinBlockSize;

@@ -27,6 +27,20 @@ class MetricsExporter;
 class TftpServer : public QObject {
     Q_OBJECT
 public:
+    enum class AccessLevel {
+        Blocked = 0,
+        ReadOnly = 1,
+        ReadWrite = 2
+    };
+
+    struct SubnetAccessRule {
+        QHostAddress address;
+        int prefixLength;
+        AccessLevel level;
+        bool matches(const QHostAddress &ip) const {
+            return ip.isInSubnet(address, prefixLength);
+        }
+    };
     /**
      * @brief Construct an idle server.
      * @param parent Optional QObject parent.
@@ -84,6 +98,16 @@ public:
     /** @brief Set the list of CIDR subnets blocked from accessing the server.
      */
     void setBlacklist(const QList<QString> &cidrs);
+
+    /** @brief Add a subnet access level rule. */
+    void addSubnetRule(const QString &cidr, AccessLevel level);
+    /** @brief Clear all subnet rules. */
+    void clearSubnetRules();
+    /** @brief Set default access level if no rule matches. */
+    void setDefaultAccessLevel(AccessLevel level) { m_defaultAccessLevel = level; }
+    /** @return The default access level. */
+    AccessLevel defaultAccessLevel() const { return m_defaultAccessLevel; }
+
     /** @brief Check if the given client address and transfer type are allowed
      * by ACL rules. */
     bool isAllowed(const QHostAddress &clientAddress, bool isUpload) const;
@@ -131,6 +155,21 @@ public:
     void setSessionLimit(qint64 bytesPerSec) { m_sessionLimit = bytesPerSec; }
     /** @return The per-session speed limit in bytes per second. */
     qint64 sessionLimit() const { return m_sessionLimit; }
+
+    /** @brief Set maximum concurrent connections (overall). */
+    void setMaxConnections(int maxConns) { m_maxConnections = maxConns; }
+    /** @return Maximum concurrent connections. */
+    int maxConnections() const { return m_maxConnections; }
+
+    /** @brief Set maximum concurrent connections per IP. */
+    void setMaxConnectionsPerIp(int maxConnsPerIp) { m_maxConnectionsPerIp = maxConnsPerIp; }
+    /** @return Maximum concurrent connections per IP. */
+    int maxConnectionsPerIp() const { return m_maxConnectionsPerIp; }
+
+    /** @brief Set maximum requests per second per IP (0.0 = unlimited). */
+    void setMaxRequestsPerSecond(double rate) { m_maxRequestsPerSecond = rate; }
+    /** @return Maximum requests per second per IP. */
+    double maxRequestsPerSecond() const { return m_maxRequestsPerSecond; }
 
     /** @brief Calculate the delay for a packet of size packetSize based on
      * global limit. */
@@ -210,12 +249,25 @@ private:
     QMap<QString, QString> m_virtualMappings;
     QMap<QString, TftpSession *> m_sessions;
 
-    // Rate Limiting
+    // Rate Limiting & Throttling
     qint64 m_globalLimit = 0;
     qint64 m_sessionLimit = 0;
     mutable double m_globalTokens = 0;
     mutable QElapsedTimer m_globalTimer;
     double m_packetDropRate = 0.0;
+    int m_maxConnections = 0;
+    int m_maxConnectionsPerIp = 0;
+    double m_maxRequestsPerSecond = 0.0;
+
+    struct RateLimiterState {
+        QElapsedTimer timer;
+        double tokens = 0.0;
+    };
+    mutable QMap<QString, RateLimiterState> m_ipRateLimiters;
+
+    // Subnet Access Levels
+    QList<SubnetAccessRule> m_subnetRules;
+    AccessLevel m_defaultAccessLevel = AccessLevel::ReadWrite;
 
     // JSON Logging
     bool m_jsonLoggingEnabled = false;

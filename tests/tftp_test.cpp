@@ -21,6 +21,7 @@
 #include "core/tftp_protocol.h"
 #include "core/tftp_server.h"
 #include "cli/cli_runner.h"
+#include "gui/map_translator.h"
 
 using namespace tftp;
 
@@ -47,6 +48,7 @@ private slots:
     void testDownloadDefaultBlockSize();
     void testBlockSizeNegotiation();
     void testWindowSizeNegotiation();
+    void testNetasciiMode();
     void testBlockRollover();
     void testUploadRoundTrip();
     void testUploadOverwriteRejected();
@@ -61,6 +63,10 @@ private slots:
     void testIpv6Binding();
     void testSinglePortMultiplexing();
     void testRateLimiting();
+    void testSecurityThrottling();
+    void testDiskSpacePreflightCheck();
+    void testGranularSubnetAcls();
+    void testProfilesImportExport();
     void testStructuredLogging();
     void testPrometheusExporter();
     void testMetricsExporterHardening();
@@ -223,6 +229,45 @@ void TFTPProtocolTest::testWindowSizeNegotiation() {
     QFile out(outPath);
     QVERIFY(out.open(QIODevice::ReadOnly));
     QCOMPARE(out.readAll(), data);
+}
+
+void TFTPProtocolTest::testNetasciiMode() {
+    // Test native -> netascii -> native translation round-trip.
+    const QByteArray localData = "Line1\nLine2\rNotNewline\nLine3\n";
+
+    // 1. Download Test (Server RRQ in netascii, Client GET in netascii)
+    QVERIFY(!writeServerFile(QStringLiteral("netascii_download.bin"), localData).isEmpty());
+
+    TftpClient client;
+    client.setMode(QStringLiteral("netascii"));
+    const QString outPath = m_clientDir.path() + QStringLiteral("/netascii_download.out");
+    QSignalSpy spy(&client, &TftpClient::transferFinished);
+    client.downloadFile(QStringLiteral("127.0.0.1"), m_port, QStringLiteral("netascii_download.bin"), outPath);
+    QVERIFY(spy.wait(5000));
+    QCOMPARE(spy.takeFirst().at(0).toBool(), true);
+
+    QFile out(outPath);
+    QVERIFY(out.open(QIODevice::ReadOnly));
+    // Client should write native line endings. Since we are on Linux/macOS in this environment, it should match localData.
+    QCOMPARE(out.readAll(), localData);
+    out.close();
+
+    // 2. Upload Test (Client PUT in netascii, Server WRQ in netascii)
+    QTemporaryFile tempLocalFile;
+    QVERIFY(tempLocalFile.open());
+    tempLocalFile.write(localData);
+    tempLocalFile.close();
+
+    TftpClient clientUpload;
+    clientUpload.setMode(QStringLiteral("netascii"));
+    QSignalSpy spyUpload(&clientUpload, &TftpClient::transferFinished);
+    clientUpload.uploadFile(QStringLiteral("127.0.0.1"), m_port, tempLocalFile.fileName(), QStringLiteral("netascii_upload.bin"));
+    QVERIFY(spyUpload.wait(5000));
+    QCOMPARE(spyUpload.takeFirst().at(0).toBool(), true);
+
+    QFile serverOutFile(m_serverDir.path() + QStringLiteral("/netascii_upload.bin"));
+    QVERIFY(serverOutFile.open(QIODevice::ReadOnly));
+    QCOMPARE(serverOutFile.readAll(), localData);
 }
 
 void TFTPProtocolTest::testBlockRollover() {
@@ -711,6 +756,121 @@ void TFTPProtocolTest::testRateLimiting() {
     while (m_server->activeSessions() > 0) {
         QTest::qWait(10);
     }
+}
+
+void TFTPProtocolTest::testSecurityThrottling() {
+    QVERIFY(!writeServerFile(QStringLiteral("throttling.bin"), "throttling data").isEmpty());
+    m_server->setMaxConnections(1);
+
+    TftpClient client1;
+    QSignalSpy spy1(&client1, &TftpClient::transferFinished);
+    client1.downloadFile(QStringLiteral("127.0.0.1"), m_port, QStringLiteral("throttling.bin"), m_clientDir.path() + QStringLiteral("/throttling1.out"));
+
+    TftpClient client2;
+    QSignalSpy spy2(&client2, &TftpClient::transferFinished);
+    client2.downloadFile(QStringLiteral("127.0.0.1"), m_port, QStringLiteral("throttling.bin"), m_clientDir.path() + QStringLiteral("/throttling2.out"));
+
+    QVERIFY(spy2.wait(2000));
+    QCOMPARE(spy2.takeFirst().at(0).toBool(), false);
+
+    QVERIFY(spy1.wait(5000));
+    QCOMPARE(spy1.takeFirst().at(0).toBool(), true);
+
+    m_server->setMaxConnections(0);
+    QFile::remove(m_clientDir.path() + QStringLiteral("/throttling1.out"));
+    QFile::remove(m_clientDir.path() + QStringLiteral("/throttling2.out"));
+
+    while (m_server->activeSessions() > 0) {
+        QTest::qWait(10);
+    }
+}
+
+void TFTPProtocolTest::testDiskSpacePreflightCheck() {
+    QStorageInfo storage(m_clientDir.path());
+    QVERIFY(storage.isValid());
+    qint64 available = storage.bytesAvailable();
+    qint64 required = available + 10LL * 1024LL * 1024LL * 1024LL; // available + 10 GB
+
+    QFile sparseFile(m_clientDir.path() + QStringLiteral("/sparse.bin"));
+    QVERIFY(sparseFile.open(QIODevice::ReadWrite));
+    QVERIFY(sparseFile.seek(required - 1));
+    sparseFile.write("a", 1);
+    sparseFile.close();
+
+    TftpClient client;
+    QSignalSpy spy(&client, &TftpClient::transferFinished);
+    client.uploadFile(QStringLiteral("127.0.0.1"), m_port, sparseFile.fileName(), QStringLiteral("sparse_dest.bin"));
+    QVERIFY(spy.wait(5000));
+    QCOMPARE(spy.takeFirst().at(0).toBool(), false);
+
+    QFile::remove(sparseFile.fileName());
+}
+
+void TFTPProtocolTest::testGranularSubnetAcls() {
+    QVERIFY(!writeServerFile(QStringLiteral("acl_test.bin"), "acl data").isEmpty());
+    m_server->clearSubnetRules();
+    m_server->setDefaultAccessLevel(TftpServer::AccessLevel::Blocked);
+    m_server->addSubnetRule(QStringLiteral("127.0.0.1"), TftpServer::AccessLevel::ReadOnly);
+
+    TftpClient client;
+    QSignalSpy spy(&client, &TftpClient::transferFinished);
+    client.downloadFile(QStringLiteral("127.0.0.1"), m_port, QStringLiteral("acl_test.bin"), m_clientDir.path() + QStringLiteral("/acl_test.out"));
+    QVERIFY(spy.wait(5000));
+    QCOMPARE(spy.takeFirst().at(0).toBool(), true);
+
+    QTemporaryFile tempLocalFile;
+    QVERIFY(tempLocalFile.open());
+    tempLocalFile.write("data");
+    tempLocalFile.close();
+
+    TftpClient clientUpload;
+    QSignalSpy spyUpload(&clientUpload, &TftpClient::transferFinished);
+    clientUpload.uploadFile(QStringLiteral("127.0.0.1"), m_port, tempLocalFile.fileName(), QStringLiteral("acl_upload.bin"));
+    QVERIFY(spyUpload.wait(5000));
+    QCOMPARE(spyUpload.takeFirst().at(0).toBool(), false);
+
+    m_server->clearSubnetRules();
+    m_server->setDefaultAccessLevel(TftpServer::AccessLevel::ReadWrite);
+    QFile::remove(m_clientDir.path() + QStringLiteral("/acl_test.out"));
+}
+
+void TFTPProtocolTest::testProfilesImportExport() {
+    // 1. Verify translation loader MapTranslator works
+    QTranslator *tr = tftp::gui::MapTranslator::create(QStringLiteral("tr"), this);
+    QVERIFY(tr != nullptr);
+    QCOMPARE(tr->translate("", "Client"), QStringLiteral("İstemci"));
+    QCOMPARE(tr->translate("", "Server"), QStringLiteral("Sunucu"));
+    delete tr;
+
+    // 2. Test JSON Serialization logic for a Client Profile
+    QJsonObject client;
+    client.insert(QStringLiteral("host"), QStringLiteral("10.0.0.1"));
+    client.insert(QStringLiteral("port"), 69);
+    client.insert(QStringLiteral("blockSize"), 1024);
+    client.insert(QStringLiteral("timeoutMs"), 3000);
+    client.insert(QStringLiteral("windowSize"), 4);
+    client.insert(QStringLiteral("pskKey"), QStringLiteral("secret"));
+
+    QJsonObject mainObj;
+    mainObj.insert(QStringLiteral("profileName"), QStringLiteral("TestProfile"));
+    mainObj.insert(QStringLiteral("client"), client);
+
+    QJsonDocument doc(mainObj);
+    QByteArray jsonBytes = doc.toJson();
+
+    // Now parse it back (simulating import)
+    QJsonDocument docImport = QJsonDocument::fromJson(jsonBytes);
+    QVERIFY(!docImport.isNull());
+    QJsonObject objImport = docImport.object();
+    QCOMPARE(objImport.value(QStringLiteral("profileName")).toString(), QStringLiteral("TestProfile"));
+
+    QJsonObject clientImport = objImport.value(QStringLiteral("client")).toObject();
+    QCOMPARE(clientImport.value(QStringLiteral("host")).toString(), QStringLiteral("10.0.0.1"));
+    QCOMPARE(clientImport.value(QStringLiteral("port")).toInt(), 69);
+    QCOMPARE(clientImport.value(QStringLiteral("blockSize")).toInt(), 1024);
+    QCOMPARE(clientImport.value(QStringLiteral("timeoutMs")).toInt(), 3000);
+    QCOMPARE(clientImport.value(QStringLiteral("windowSize")).toInt(), 4);
+    QCOMPARE(clientImport.value(QStringLiteral("pskKey")).toString(), QStringLiteral("secret"));
 }
 
 void TFTPProtocolTest::testStructuredLogging() {

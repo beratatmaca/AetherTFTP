@@ -73,6 +73,10 @@ private slots:
     void onServerProfileChanged(int index);
     void saveCurrentServerProfile();
     void deleteCurrentServerProfile();
+    void importClientProfile();
+    void exportClientProfile();
+    void importServerProfile();
+    void exportServerProfile();
 
 private:
     QWidget *buildMainView();

@@ -43,6 +43,9 @@
 #include <QStyle>
 #include <QScrollArea>
 #include <QTime>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonArray>
 #include <QTreeView>
 #include <QVBoxLayout>
 #include <QSystemTrayIcon>
@@ -559,6 +562,48 @@ void MainWindow::buildMenus() {
         m_theme->setMode(mode);
         showStatus(tr("Theme: %1").arg(QString(act->text()).remove(QLatin1Char('&'))));
     });
+
+    auto *langMenu = viewMenu->addMenu(tr("&Language"));
+    auto *langGroup = new QActionGroup(this);
+    const auto addLangAction = [&](const QString &text, const QString &code) {
+        QAction *act = langMenu->addAction(text);
+        act->setCheckable(true);
+        act->setData(code);
+        langGroup->addAction(act);
+        return act;
+    };
+    QAction *langSys = addLangAction(tr("&System Default"), QStringLiteral("system"));
+    QAction *langEn = addLangAction(tr("&English"), QStringLiteral("en"));
+    QAction *langDe = addLangAction(tr("&German (Deutsch)"), QStringLiteral("de"));
+    QAction *langTr = addLangAction(tr("&Turkish (Türkçe)"), QStringLiteral("tr"));
+    QAction *langEs = addLangAction(tr("&Spanish (Español)"), QStringLiteral("es"));
+
+    QSettings langSettings;
+    QString currentLang = langSettings.value(QStringLiteral("general/language"), QStringLiteral("system")).toString();
+    if (currentLang == QStringLiteral("de")) langDe->setChecked(true);
+    else if (currentLang == QStringLiteral("tr")) langTr->setChecked(true);
+    else if (currentLang == QStringLiteral("es")) langEs->setChecked(true);
+    else if (currentLang == QStringLiteral("en")) langEn->setChecked(true);
+    else langSys->setChecked(true);
+
+    connect(langGroup, &QActionGroup::triggered, this, [this](QAction *act) {
+        QString code = act->data().toString();
+        QSettings settings;
+        settings.setValue(QStringLiteral("general/language"), code);
+        QMessageBox::information(this, tr("Language Changed"), tr("Please restart the application to apply the language change."));
+    });
+
+    auto *profilesMenu = menuBar()->addMenu(tr("&Profiles"));
+    QAction *importClientAct = profilesMenu->addAction(tr("Import &Client Profile…"));
+    QAction *exportClientAct = profilesMenu->addAction(tr("Export C&lient Profile…"));
+    profilesMenu->addSeparator();
+    QAction *importServerAct = profilesMenu->addAction(tr("Import &Server Profile…"));
+    QAction *exportServerAct = profilesMenu->addAction(tr("Export S&erver Profile…"));
+
+    connect(importClientAct, &QAction::triggered, this, &MainWindow::importClientProfile);
+    connect(exportClientAct, &QAction::triggered, this, &MainWindow::exportClientProfile);
+    connect(importServerAct, &QAction::triggered, this, &MainWindow::importServerProfile);
+    connect(exportServerAct, &QAction::triggered, this, &MainWindow::exportServerProfile);
 
     auto *helpMenu = menuBar()->addMenu(tr("&Help"));
     QAction *aboutAct = helpMenu->addAction(tr("&About AetherTFTP…"));
@@ -1369,6 +1414,240 @@ void MainWindow::deleteCurrentServerProfile() {
 
     loadServerProfileList();
     m_serverProfileCombo->setCurrentIndex(0);
+}
+
+void MainWindow::importClientProfile() {
+    QString path = QFileDialog::getOpenFileName(this, tr("Import Client Profile"), QString(), tr("JSON Files (*.json)"));
+    if (path.isEmpty()) return;
+
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly)) {
+        QMessageBox::critical(this, tr("Import Profile"), tr("Failed to open file for reading."));
+        return;
+    }
+
+    QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
+    if (doc.isNull() || !doc.isObject()) {
+        QMessageBox::critical(this, tr("Import Profile"), tr("Invalid profile JSON format."));
+        return;
+    }
+
+    QJsonObject obj = doc.object();
+    QString profileName = obj.value(QStringLiteral("profileName")).toString();
+    if (profileName.trimmed().isEmpty()) {
+        QMessageBox::critical(this, tr("Import Profile"), tr("Missing profileName field."));
+        return;
+    }
+
+    QJsonObject client = obj.value(QStringLiteral("client")).toObject();
+    QSettings settings;
+    settings.beginGroup(QStringLiteral("profiles"));
+    settings.beginGroup(profileName.trimmed());
+    settings.setValue(QStringLiteral("host"), client.value(QStringLiteral("host")).toString());
+    settings.setValue(QStringLiteral("port"), client.value(QStringLiteral("port")).toInt(kDefaultPort));
+    settings.setValue(QStringLiteral("blockSize"), client.value(QStringLiteral("blockSize")).toInt(kDefaultBlockSize));
+    settings.setValue(QStringLiteral("timeoutMs"), client.value(QStringLiteral("timeoutMs")).toInt(5000));
+    settings.setValue(QStringLiteral("windowSize"), client.value(QStringLiteral("windowSize")).toInt(1));
+    settings.setValue(QStringLiteral("pskKey"), client.value(QStringLiteral("pskKey")).toString());
+    settings.endGroup();
+    settings.endGroup();
+
+    loadProfileList();
+    int idx = m_profileCombo->findText(profileName.trimmed());
+    if (idx >= 0) {
+        m_profileCombo->setCurrentIndex(idx);
+    }
+    QMessageBox::information(this, tr("Import Profile"), tr("Profile '%1' imported successfully.").arg(profileName));
+}
+
+void MainWindow::exportClientProfile() {
+    int index = m_profileCombo->currentIndex();
+    if (index <= 0) {
+        QMessageBox::warning(this, tr("Export Profile"), tr("Please select a profile to export (Default settings cannot be exported)."));
+        return;
+    }
+
+    const QString profileName = m_profileCombo->itemText(index);
+    QString path = QFileDialog::getSaveFileName(this, tr("Export Client Profile"), profileName + QStringLiteral(".json"), tr("JSON Files (*.json)"));
+    if (path.isEmpty()) return;
+
+    QSettings settings;
+    settings.beginGroup(QStringLiteral("profiles"));
+    settings.beginGroup(profileName);
+    QJsonObject client;
+    client.insert(QStringLiteral("host"), settings.value(QStringLiteral("host")).toString());
+    client.insert(QStringLiteral("port"), settings.value(QStringLiteral("port"), kDefaultPort).toInt());
+    client.insert(QStringLiteral("blockSize"), settings.value(QStringLiteral("blockSize"), kDefaultBlockSize).toInt());
+    client.insert(QStringLiteral("timeoutMs"), settings.value(QStringLiteral("timeoutMs"), 5000).toInt());
+    client.insert(QStringLiteral("windowSize"), settings.value(QStringLiteral("windowSize"), 1).toInt());
+    client.insert(QStringLiteral("pskKey"), settings.value(QStringLiteral("pskKey")).toString());
+    settings.endGroup();
+    settings.endGroup();
+
+    QJsonObject mainObj;
+    mainObj.insert(QStringLiteral("profileName"), profileName);
+    mainObj.insert(QStringLiteral("client"), client);
+
+    QFile file(path);
+    if (!file.open(QIODevice::WriteOnly)) {
+        QMessageBox::critical(this, tr("Export Profile"), tr("Failed to open file for writing."));
+        return;
+    }
+
+    QJsonDocument doc(mainObj);
+    file.write(doc.toJson(QJsonDocument::Indented));
+    QMessageBox::information(this, tr("Export Profile"), tr("Profile '%1' exported successfully.").arg(profileName));
+}
+
+void MainWindow::importServerProfile() {
+    QString path = QFileDialog::getOpenFileName(this, tr("Import Server Profile"), QString(), tr("JSON Files (*.json)"));
+    if (path.isEmpty()) return;
+
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly)) {
+        QMessageBox::critical(this, tr("Import Profile"), tr("Failed to open file for reading."));
+        return;
+    }
+
+    QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
+    if (doc.isNull() || !doc.isObject()) {
+        QMessageBox::critical(this, tr("Import Profile"), tr("Invalid profile JSON format."));
+        return;
+    }
+
+    QJsonObject obj = doc.object();
+    QString profileName = obj.value(QStringLiteral("profileName")).toString();
+    if (profileName.trimmed().isEmpty()) {
+        QMessageBox::critical(this, tr("Import Profile"), tr("Missing profileName field."));
+        return;
+    }
+
+    QJsonObject server = obj.value(QStringLiteral("server")).toObject();
+    QSettings settings;
+    settings.beginGroup(QStringLiteral("serverProfiles"));
+    settings.beginGroup(profileName.trimmed());
+    settings.setValue(QStringLiteral("port"), server.value(QStringLiteral("port")).toInt(69));
+    settings.setValue(QStringLiteral("dir"), server.value(QStringLiteral("dir")).toString());
+    settings.setValue(QStringLiteral("maxConcurrent"), server.value(QStringLiteral("maxConcurrent")).toInt(10));
+    settings.setValue(QStringLiteral("singlePort"), server.value(QStringLiteral("singlePort")).toBool(false));
+    settings.setValue(QStringLiteral("jsonLogging"), server.value(QStringLiteral("jsonLogging")).toBool(false));
+
+    QJsonArray allowedArray = server.value(QStringLiteral("allowedExts")).toArray();
+    QStringList allowedList;
+    for (const auto &val : allowedArray) allowedList.append(val.toString());
+    settings.setValue(QStringLiteral("allowedExts"), allowedList);
+
+    QJsonArray blockedArray = server.value(QStringLiteral("blockedExts")).toArray();
+    QStringList blockedList;
+    for (const auto &val : blockedArray) blockedList.append(val.toString());
+    settings.setValue(QStringLiteral("blockedExts"), blockedList);
+
+    QJsonArray whitelistArray = server.value(QStringLiteral("ipWhitelist")).toArray();
+    QStringList whitelistList;
+    for (const auto &val : whitelistArray) whitelistList.append(val.toString());
+    settings.setValue(QStringLiteral("ipWhitelist"), whitelistList);
+
+    QJsonArray blacklistArray = server.value(QStringLiteral("ipBlacklist")).toArray();
+    QStringList blacklistList;
+    for (const auto &val : blacklistArray) blacklistList.append(val.toString());
+    settings.setValue(QStringLiteral("ipBlacklist"), blacklistList);
+
+    QJsonArray roDirsArray = server.value(QStringLiteral("readOnlyDirs")).toArray();
+    QStringList roDirsList;
+    for (const auto &val : roDirsArray) roDirsList.append(val.toString());
+    settings.setValue(QStringLiteral("readOnlyDirs"), roDirsList);
+
+    QJsonObject mappingsObj = server.value(QStringLiteral("virtualMappings")).toObject();
+    QVariantMap mappingsMap;
+    for (auto it = mappingsObj.begin(); it != mappingsObj.end(); ++it) {
+        mappingsMap.insert(it.key(), it.value().toString());
+    }
+    settings.setValue(QStringLiteral("virtualMappings"), mappingsMap);
+
+    settings.setValue(QStringLiteral("globalLimit"), server.value(QStringLiteral("globalLimit")).toInt(0));
+    settings.setValue(QStringLiteral("sessionLimit"), server.value(QStringLiteral("sessionLimit")).toInt(0));
+    settings.setValue(QStringLiteral("autoStart"), server.value(QStringLiteral("autoStart")).toBool(false));
+    settings.setValue(QStringLiteral("pskKey"), server.value(QStringLiteral("pskKey")).toString());
+    settings.endGroup();
+    settings.endGroup();
+
+    loadServerProfileList();
+    int idx = m_serverProfileCombo->findText(profileName.trimmed());
+    if (idx >= 0) {
+        m_serverProfileCombo->setCurrentIndex(idx);
+    }
+    QMessageBox::information(this, tr("Import Profile"), tr("Server profile '%1' imported successfully.").arg(profileName));
+}
+
+void MainWindow::exportServerProfile() {
+    int index = m_serverProfileCombo->currentIndex();
+    if (index <= 0) {
+        QMessageBox::warning(this, tr("Export Profile"), tr("Please select a profile to export."));
+        return;
+    }
+
+    const QString profileName = m_serverProfileCombo->itemText(index);
+    QString path = QFileDialog::getSaveFileName(this, tr("Export Server Profile"), profileName + QStringLiteral(".json"), tr("JSON Files (*.json)"));
+    if (path.isEmpty()) return;
+
+    QSettings settings;
+    settings.beginGroup(QStringLiteral("serverProfiles"));
+    settings.beginGroup(profileName);
+
+    QJsonObject server;
+    server.insert(QStringLiteral("port"), settings.value(QStringLiteral("port"), 69).toInt());
+    server.insert(QStringLiteral("dir"), settings.value(QStringLiteral("dir")).toString());
+    server.insert(QStringLiteral("maxConcurrent"), settings.value(QStringLiteral("maxConcurrent"), 10).toInt());
+    server.insert(QStringLiteral("singlePort"), settings.value(QStringLiteral("singlePort"), false).toBool());
+    server.insert(QStringLiteral("jsonLogging"), settings.value(QStringLiteral("jsonLogging"), false).toBool());
+
+    QJsonArray allowedArray;
+    for (const auto &val : settings.value(QStringLiteral("allowedExts")).toStringList()) allowedArray.append(val);
+    server.insert(QStringLiteral("allowedExts"), allowedArray);
+
+    QJsonArray blockedArray;
+    for (const auto &val : settings.value(QStringLiteral("blockedExts")).toStringList()) blockedArray.append(val);
+    server.insert(QStringLiteral("blockedExts"), blockedArray);
+
+    QJsonArray whitelistArray;
+    for (const auto &val : settings.value(QStringLiteral("ipWhitelist")).toStringList()) whitelistArray.append(val);
+    server.insert(QStringLiteral("ipWhitelist"), whitelistArray);
+
+    QJsonArray blacklistArray;
+    for (const auto &val : settings.value(QStringLiteral("ipBlacklist")).toStringList()) blacklistArray.append(val);
+    server.insert(QStringLiteral("ipBlacklist"), blacklistArray);
+
+    QJsonArray roDirsArray;
+    for (const auto &val : settings.value(QStringLiteral("readOnlyDirs")).toStringList()) roDirsArray.append(val);
+    server.insert(QStringLiteral("readOnlyDirs"), roDirsArray);
+
+    QVariantMap mappingsMap = settings.value(QStringLiteral("virtualMappings")).toMap();
+    QJsonObject mappingsObj;
+    for (auto it = mappingsMap.begin(); it != mappingsMap.end(); ++it) {
+        mappingsObj.insert(it.key(), it.value().toString());
+    }
+    server.insert(QStringLiteral("virtualMappings"), mappingsObj);
+
+    server.insert(QStringLiteral("globalLimit"), settings.value(QStringLiteral("globalLimit"), 0).toInt());
+    server.insert(QStringLiteral("sessionLimit"), settings.value(QStringLiteral("sessionLimit"), 0).toInt());
+    server.insert(QStringLiteral("autoStart"), settings.value(QStringLiteral("autoStart"), false).toBool());
+    server.insert(QStringLiteral("pskKey"), settings.value(QStringLiteral("pskKey")).toString());
+    settings.endGroup();
+    settings.endGroup();
+
+    QJsonObject mainObj;
+    mainObj.insert(QStringLiteral("profileName"), profileName);
+    mainObj.insert(QStringLiteral("server"), server);
+
+    QFile file(path);
+    if (!file.open(QIODevice::WriteOnly)) {
+        QMessageBox::critical(this, tr("Export Profile"), tr("Failed to open file for writing."));
+        return;
+    }
+
+    QJsonDocument doc(mainObj);
+    file.write(doc.toJson(QJsonDocument::Indented));
+    QMessageBox::information(this, tr("Export Profile"), tr("Server profile '%1' exported successfully.").arg(profileName));
 }
 
 }  // namespace tftp::gui
