@@ -230,7 +230,12 @@ void TftpClient::handleData(quint16 block, const QByteArray &payload) {
     if (block != expected)
         return;  // Out-of-window.
 
-    if (m_file->write(payload) != payload.size()) {
+    QByteArray finalPayload = payload;
+    if (!m_pskKey.isEmpty()) {
+        finalPayload = cryptPayload(payload, m_pskKey, block);
+    }
+
+    if (m_file->write(finalPayload) != finalPayload.size()) {
         fail(QStringLiteral("Local write failed"));
         return;
     }
@@ -261,7 +266,11 @@ void TftpClient::sendDataBlock(qint64 block) {
 
     m_block = block;
     m_lastBlockSent = payload.size() < m_blockSize;
-    m_lastPacket = buildData(quint16(block), payload);
+    QByteArray finalPayload = payload;
+    if (!m_pskKey.isEmpty()) {
+        finalPayload = cryptPayload(payload, m_pskKey, quint16(block));
+    }
+    m_lastPacket = buildData(quint16(block), finalPayload);
     m_socket->writeDatagram(m_lastPacket, m_serverAddr, m_serverPort);
     armRetransmit();
 }

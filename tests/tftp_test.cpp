@@ -54,6 +54,8 @@ private slots:
     void testMissingFileError();
     void testPathTraversalRejected();
     void testAcls();
+    void testVirtualDirectoryMapping();
+    void testPskEncryption();
     void testPathSecurityPolicy();
     void testSymlinkPathTraversal();
     void testIpv6Binding();
@@ -376,6 +378,119 @@ void TFTPProtocolTest::testAcls() {
         QCOMPARE(spy.takeFirst().at(0).toBool(), false);
     }
     m_server->setWhitelist({});
+}
+
+void TFTPProtocolTest::testVirtualDirectoryMapping() {
+    QTemporaryDir tempDir;
+    QVERIFY(tempDir.isValid());
+
+    const QByteArray data = "Virtual Directory content";
+    QFile f(tempDir.path() + QStringLiteral("/mapped_file.bin"));
+    QVERIFY(f.open(QIODevice::WriteOnly));
+    f.write(data);
+    f.close();
+
+    QMap<QString, QString> mappings;
+    mappings.insert(QStringLiteral("fw"), tempDir.path());
+    m_server->setVirtualMappings(mappings);
+
+    // Download from mapped directory
+    {
+        TftpClient client;
+        const QString outPath = m_clientDir.path() + QStringLiteral("/mapped_download.out");
+        QSignalSpy spy(&client, &TftpClient::transferFinished);
+        client.downloadFile(QStringLiteral("127.0.0.1"), m_port, QStringLiteral("fw/mapped_file.bin"), outPath);
+        QVERIFY(spy.wait(5000));
+        QCOMPARE(spy.takeFirst().at(0).toBool(), true);
+
+        QFile destFile(outPath);
+        QVERIFY(destFile.open(QIODevice::ReadOnly));
+        QCOMPARE(destFile.readAll(), data);
+    }
+
+    // Upload into mapped directory
+    {
+        const QString srcPath = m_clientDir.path() + QStringLiteral("/mapped_upload.src");
+        QFile src(srcPath);
+        QVERIFY(src.open(QIODevice::WriteOnly));
+        src.write("uploaded data");
+        src.close();
+
+        TftpClient client;
+        QSignalSpy spy(&client, &TftpClient::transferFinished);
+        client.uploadFile(QStringLiteral("127.0.0.1"), m_port, srcPath, QStringLiteral("fw/uploaded_mapped.bin"));
+        QVERIFY(spy.wait(5000));
+        QCOMPARE(spy.takeFirst().at(0).toBool(), true);
+
+        QFile uploaded(tempDir.path() + QStringLiteral("/uploaded_mapped.bin"));
+        QVERIFY(uploaded.open(QIODevice::ReadOnly));
+        QCOMPARE(uploaded.readAll(), QByteArray("uploaded data"));
+    }
+
+    // Path traversal attempt in virtual mapped folder
+    {
+        TftpClient client;
+        const QString outPath = m_clientDir.path() + QStringLiteral("/mapped_traversal.out");
+        QSignalSpy spy(&client, &TftpClient::transferFinished);
+        client.downloadFile(QStringLiteral("127.0.0.1"), m_port, QStringLiteral("fw/../invalid.bin"), outPath);
+        QVERIFY(spy.wait(5000));
+        QCOMPARE(spy.takeFirst().at(0).toBool(), false);
+    }
+
+    m_server->setVirtualMappings({});
+}
+
+void TFTPProtocolTest::testPskEncryption() {
+    const QByteArray plainData = "Secret document content, confidential!";
+    const QString serverFile = writeServerFile(QStringLiteral("secret.bin"), plainData);
+
+    m_server->setPskKey(QStringLiteral("SecretKey"));
+
+    // 1. Success case: matching client key
+    {
+        TftpClient client;
+        client.setPskKey(QStringLiteral("SecretKey"));
+        const QString outPath = m_clientDir.path() + QStringLiteral("/psk_success.out");
+        QSignalSpy spy(&client, &TftpClient::transferFinished);
+        client.downloadFile(QStringLiteral("127.0.0.1"), m_port, QStringLiteral("secret.bin"), outPath);
+        QVERIFY(spy.wait(5000));
+        QCOMPARE(spy.takeFirst().at(0).toBool(), true);
+
+        QFile destFile(outPath);
+        QVERIFY(destFile.open(QIODevice::ReadOnly));
+        QCOMPARE(destFile.readAll(), plainData);
+    }
+
+    // 2. Wrong client key: decryption should fail (content is garbled)
+    {
+        TftpClient client;
+        client.setPskKey(QStringLiteral("WrongKey"));
+        const QString outPath = m_clientDir.path() + QStringLiteral("/psk_wrong.out");
+        QSignalSpy spy(&client, &TftpClient::transferFinished);
+        client.downloadFile(QStringLiteral("127.0.0.1"), m_port, QStringLiteral("secret.bin"), outPath);
+        QVERIFY(spy.wait(5000));
+        QCOMPARE(spy.takeFirst().at(0).toBool(), true);
+
+        QFile destFile(outPath);
+        QVERIFY(destFile.open(QIODevice::ReadOnly));
+        QVERIFY(destFile.readAll() != plainData);
+    }
+
+    // 3. No client key: downloaded content is completely encrypted/scrambled
+    {
+        TftpClient client;
+        const QString outPath = m_clientDir.path() + QStringLiteral("/psk_none.out");
+        QSignalSpy spy(&client, &TftpClient::transferFinished);
+        client.downloadFile(QStringLiteral("127.0.0.1"), m_port, QStringLiteral("secret.bin"), outPath);
+        QVERIFY(spy.wait(5000));
+        QCOMPARE(spy.takeFirst().at(0).toBool(), true);
+
+        QFile destFile(outPath);
+        QVERIFY(destFile.open(QIODevice::ReadOnly));
+        QVERIFY(destFile.readAll() != plainData);
+    }
+
+    m_server->setPskKey(QString());
 }
 
 void TFTPProtocolTest::testPathSecurityPolicy() {

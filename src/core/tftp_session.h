@@ -51,6 +51,8 @@ public:
     void setSinglePortMode(bool enabled) { m_singlePortMode = enabled; }
     /** @return @c true if single-port mode is enabled. */
     bool isSinglePortMode() const { return m_singlePortMode; }
+    /** @brief Set PSK Key for encryption. */
+    void setPskKey(const QString &key) { m_pskKey = key; }
     /** @brief Process an incoming datagram routed from single-port server. */
     void processDatagram(const QByteArray &buf);
     /** @brief Expose internal socket for routing or address check. */
@@ -147,6 +149,7 @@ private:
     bool m_finished = false;
     bool m_emitted = false;  ///< Ensures finished() fires exactly once.
     bool m_singlePortMode = false;
+    QString m_pskKey;
 
     qint64 m_bytesTransferred = 0;
     qint64 m_totalBytes = -1;  ///< Known for RRQ; -1 for WRQ unless tsize given.

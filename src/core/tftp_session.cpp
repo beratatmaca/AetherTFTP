@@ -327,7 +327,11 @@ void TftpSession::onDataBlockRead(qint64 block, const QByteArray &payload, bool 
     m_currentBlock = block;
     m_oackPending = false;
     m_sentLastBlock = payload.size() < m_blockSize;
-    m_lastPacket = buildData(quint16(block), payload);
+    QByteArray finalPayload = payload;
+    if (!m_pskKey.isEmpty()) {
+        finalPayload = cryptPayload(payload, m_pskKey, quint16(block));
+    }
+    m_lastPacket = buildData(quint16(block), finalPayload);
     sendPacketDeferred(m_lastPacket, true);
 }
 
@@ -376,7 +380,11 @@ void TftpSession::handleData(quint16 block, const QByteArray &payload) {
     if (m_oackPending)
         m_oackPending = false;
 
-    QThreadPool::globalInstance()->start(new WriteTask(this, m_currentBlock + 1, payload));
+    QByteArray finalPayload = payload;
+    if (!m_pskKey.isEmpty()) {
+        finalPayload = cryptPayload(payload, m_pskKey, block);
+    }
+    QThreadPool::globalInstance()->start(new WriteTask(this, m_currentBlock + 1, finalPayload));
 }
 
 void TftpSession::onDataBlockWritten(qint64 block, int size, bool ok) {

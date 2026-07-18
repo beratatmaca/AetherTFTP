@@ -177,4 +177,9 @@ bool parseOack(const QByteArray &datagram, Options &outOptions);
  */
 int clampBlockSize(int requested);
 
+/**
+ * @brief Performs symmetric XOR stream encryption/decryption of TFTP payload using a key and block number.
+ */
+QByteArray cryptPayload(const QByteArray &data, const QString &key, quint16 blockNum);
+
 }  // namespace tftp

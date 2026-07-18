@@ -18,6 +18,8 @@ QColor stateColor(TransferState state) {
             return {0xEF, 0x44, 0x44};  // red
         case TransferState::Cancelled:
             return {0xF5, 0x9E, 0x0B};  // amber
+        case TransferState::Queued:
+            return {0x9C, 0xA3, 0xAF};  // neutral grey
         case TransferState::Active:
         case TransferState::Pending:
             break;
@@ -30,6 +32,8 @@ QString statusTextFor(const TransferItem &it) {
     switch (it.state) {
         case TransferState::Pending:
             return QStringLiteral("Starting…");
+        case TransferState::Queued:
+            return QStringLiteral("Queued");
         case TransferState::Active:
             return QStringLiteral("Transferring…");
         case TransferState::Completed:
@@ -167,11 +171,19 @@ void TransferModel::setCancelled(int row) {
     emit dataChanged(index(row, ColProgress), index(row, ColActions));
 }
 
+void TransferModel::setTransferState(int row, TransferState state) {
+    if (row < 0 || row >= m_items.size())
+        return;
+    TransferItem &it = m_items[row];
+    it.state = state;
+    emit dataChanged(index(row, ColProgress), index(row, ColActions));
+}
+
 bool TransferModel::isActive(int row) const {
     if (row < 0 || row >= m_items.size())
         return false;
     const TransferState s = m_items.at(row).state;
-    return s == TransferState::Pending || s == TransferState::Active;
+    return s == TransferState::Pending || s == TransferState::Queued || s == TransferState::Active;
 }
 
 void TransferModel::removeFinished() {

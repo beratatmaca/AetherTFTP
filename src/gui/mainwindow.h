@@ -17,6 +17,8 @@ class QButtonGroup;
 class QCloseEvent;
 class QComboBox;
 class QCheckBox;
+class QSystemTrayIcon;
+class QMenu;
 
 namespace tftp {
 class TftpServer;
@@ -78,6 +80,7 @@ private:
     void buildMenus();
 
     void appendLog(const QString &message);
+    void filterLog();
     void showStatus(const QString &message);
     void updateMetrics();
 
@@ -107,9 +110,13 @@ private:
     bool m_serverJsonLogging = false;
     QStringList m_serverAllowedExts;
     QStringList m_serverBlockedExts;
+    QStringList m_serverIpWhitelist;
+    QStringList m_serverIpBlacklist;
     QStringList m_serverReadOnlyDirs;
+    QMap<QString, QString> m_serverVirtualMappings;
     int m_serverGlobalLimit = 0;
     int m_serverSessionLimit = 0;
+    bool m_serverAutoStart = false;
 
     // Server controls.
     QComboBox *m_serverProfileCombo = nullptr;
@@ -120,11 +127,17 @@ private:
     QSpinBox *m_serverMaxSpin = nullptr;
     QCheckBox *m_serverSinglePortCheck = nullptr;
     QCheckBox *m_serverJsonLoggingCheck = nullptr;
+    QCheckBox *m_serverAutoStartCheck = nullptr;
     QLineEdit *m_serverAllowedExtsEdit = nullptr;
     QLineEdit *m_serverBlockedExtsEdit = nullptr;
+    QLineEdit *m_serverIpWhitelistEdit = nullptr;
+    QLineEdit *m_serverIpBlacklistEdit = nullptr;
     QLineEdit *m_serverReadOnlyDirsEdit = nullptr;
+    QLineEdit *m_serverVirtualMappingsEdit = nullptr;
     QSpinBox *m_serverGlobalLimitSpin = nullptr;
     QSpinBox *m_serverSessionLimitSpin = nullptr;
+    QLineEdit *m_serverPskKeyEdit = nullptr;
+    QString m_serverPskKey;
 
     // Left panel: Client/Server config switch.
     QStackedWidget *m_configStack = nullptr;
@@ -138,6 +151,8 @@ private:
     QSpinBox *m_blockSizeSpin = nullptr;
     QSpinBox *m_timeoutSpin = nullptr;
     QSpinBox *m_windowSizeSpin = nullptr;
+    QLineEdit *m_pskKeyEdit = nullptr;
+    QString m_pskKey;
 
     void loadProfileList();
     void loadServerProfileList();
@@ -156,10 +171,18 @@ private:
     TransferModel *m_model = nullptr;
     QTreeView *m_view = nullptr;
     QPlainTextEdit *m_log = nullptr;
+    QLineEdit *m_logSearchEdit = nullptr;
+    QComboBox *m_logFilterCombo = nullptr;
+    QStringList m_allLogLines;
     SpeedChartWidget *m_speedChart = nullptr;
 
     // Theme.
     ThemeController *m_theme = nullptr;
+
+    // System Tray
+    QSystemTrayIcon *m_trayIcon = nullptr;
+    QAction *m_trayToggleServerAction = nullptr;
+    void setupTrayIcon();
 
     // Active-transfer bookkeeping. The id is stable across row removals, so it
     // survives "Clear Completed" (which shifts row indices).
@@ -167,6 +190,19 @@ private:
     QHash<TftpClient *, quint64> m_idOf;
     QHash<quint64, TftpClient *> m_clientById;
     QHash<TftpClient *, QString> m_lastError;
+
+    // Client Transfer Queue
+    struct QueuedTransfer {
+        quint64 id;
+        bool isUpload;
+        QString host;
+        quint16 port;
+        QString localFile;
+        QString remoteName;
+        QString pskKey;
+    };
+    QList<QueuedTransfer> m_clientQueue;
+    void processQueue();
 };
 
 }  // namespace tftp::gui

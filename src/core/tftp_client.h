@@ -60,6 +60,11 @@ public:
      */
     void setTimeout(int milliseconds) { m_timeoutMs = milliseconds; }
 
+    /** @brief Set PSK Key for encryption. */
+    void setPskKey(const QString &key) { m_pskKey = key; }
+    /** @return The PSK Key. */
+    QString pskKey() const { return m_pskKey; }
+
     /**
      * @brief Download @p remoteFile from @p host into @p localPath.
      * @param host Server host name or address.
@@ -160,6 +165,7 @@ private:
     bool m_optionsRequested = false;
     bool m_awaitingFirstReply = false;  ///< Expecting OACK or first DATA/ACK.
     bool m_lastBlockSent = false;       ///< Upload: final short block dispatched.
+    QString m_pskKey;
 
     qint64 m_bytesTransferred = 0;
     qint64 m_totalBytes = -1;

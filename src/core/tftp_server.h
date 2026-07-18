@@ -94,6 +94,10 @@ public:
     void setBlockedExtensions(const QList<QString> &extensions);
     /** @brief Set read-only directories inside root. Path is absolute or relative to root. */
     void setReadOnlyDirectories(const QList<QString> &dirs);
+    /** @brief Set virtual directory mappings (e.g. {"fw" -> "/var/tftp/fw"}). */
+    void setVirtualMappings(const QMap<QString, QString> &mappings);
+    /** @return The virtual directory mappings. */
+    QMap<QString, QString> virtualMappings() const { return m_virtualMappings; }
     /** @brief Check if a file transfer request is allowed based on file name and path. */
     bool isPathAllowed(const QString &filename, const QString &resolvedPath, bool isUpload) const;
 
@@ -106,6 +110,11 @@ public:
     void setPacketDropRate(double rate) { m_packetDropRate = rate; }
     /** @return The packet drop rate. */
     double packetDropRate() const { return m_packetDropRate; }
+
+    /** @brief Set Pre-Shared Key for TFTP payload encryption. */
+    void setPskKey(const QString &key) { m_pskKey = key; }
+    /** @return The Pre-Shared Key. */
+    QString pskKey() const { return m_pskKey; }
 
     /** @brief Write a UDP datagram from the server socket (used by sessions in
      * single-port mode). */
@@ -198,6 +207,7 @@ private:
     QList<QString> m_allowedExtensions;
     QList<QString> m_blockedExtensions;
     QList<QString> m_readOnlyDirs;
+    QMap<QString, QString> m_virtualMappings;
     QMap<QString, TftpSession *> m_sessions;
 
     // Rate Limiting
@@ -209,6 +219,9 @@ private:
 
     // JSON Logging
     bool m_jsonLoggingEnabled = false;
+
+    // PSK Key for encryption
+    QString m_pskKey;
 
     // Prometheus Exporter
     MetricsExporter *m_metricsServer = nullptr;

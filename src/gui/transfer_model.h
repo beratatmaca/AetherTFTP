@@ -10,6 +10,7 @@ namespace tftp::gui {
 /** @brief Lifecycle state of a transfer row. */
 enum class TransferState : quint8 {
     Pending,    ///< Created, not yet moving data.
+    Queued,     ///< In the transfer queue.
     Active,     ///< Transferring.
     Completed,  ///< Finished successfully.
     Failed,     ///< Finished with an error.
@@ -104,6 +105,13 @@ public:
      * @param row Row index from @ref addTransfer().
      */
     void setCancelled(int row);
+
+    /**
+     * @brief Update the lifecycle state of a row manually.
+     * @param row Row index.
+     * @param state The target state.
+     */
+    void setTransferState(int row, TransferState state);
 
     /** @return @c true if the row exists and its transfer is still in flight. */
     bool isActive(int row) const;

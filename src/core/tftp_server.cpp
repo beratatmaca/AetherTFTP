@@ -151,6 +151,13 @@ void TftpServer::setReadOnlyDirectories(const QList<QString> &dirs) {
     }
 }
 
+void TftpServer::setVirtualMappings(const QMap<QString, QString> &mappings) {
+    m_virtualMappings.clear();
+    for (auto it = mappings.begin(); it != mappings.end(); ++it) {
+        m_virtualMappings.insert(it.key().trimmed(), QDir::cleanPath(it.value().trimmed()));
+    }
+}
+
 bool TftpServer::isPathAllowed(const QString &filename, const QString &resolvedPath, bool isUpload) const {
     const QString suffix = QFileInfo(filename).suffix().toLower();
     if (!m_allowedExtensions.isEmpty()) {
@@ -198,16 +205,31 @@ bool TftpServer::isPathAllowed(const QString &filename, const QString &resolvedP
 }
 
 QString TftpServer::resolveSafePath(const QString &filename) const {
-    const QString canonicalRoot = QFileInfo(m_rootDir).canonicalFilePath();
-    if (canonicalRoot.isEmpty())
-        return {};
-
     const QString cleaned = QDir::cleanPath(filename);
     if (cleaned.isEmpty() || QDir::isAbsolutePath(cleaned) || cleaned.startsWith(QLatin1String(".."))) {
         return {};
     }
 
-    const QString candidate = QDir::cleanPath(canonicalRoot + QLatin1Char('/') + cleaned);
+    QString targetRoot = m_rootDir;
+    QString relativePath = cleaned;
+
+    int slashIdx = cleaned.indexOf(QLatin1Char('/'));
+    QString firstSegment = (slashIdx == -1) ? cleaned : cleaned.left(slashIdx);
+
+    if (!m_virtualMappings.isEmpty() && m_virtualMappings.contains(firstSegment)) {
+        targetRoot = m_virtualMappings.value(firstSegment);
+        relativePath = (slashIdx == -1) ? QString() : cleaned.mid(slashIdx + 1);
+    }
+
+    const QString canonicalRoot = QFileInfo(targetRoot).canonicalFilePath();
+    if (canonicalRoot.isEmpty())
+        return {};
+
+    if (relativePath.isEmpty()) {
+        return {};
+    }
+
+    const QString candidate = QDir::cleanPath(canonicalRoot + QLatin1Char('/') + relativePath);
     QFileInfo info(candidate);
     QString canonicalCandidate;
     if (info.exists()) {
@@ -299,6 +321,7 @@ void TftpServer::onReadyRead() {
         auto *session = new TftpSession(sender, senderPort, req, safePath, this);
         session->setSessionLimit(m_sessionLimit);
         session->setSinglePortMode(m_singlePortMode);
+        session->setPskKey(m_pskKey);
 
         const QString fname = req.filename;
 

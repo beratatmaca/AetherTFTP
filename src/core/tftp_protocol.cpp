@@ -2,6 +2,7 @@
 
 #include <QDataStream>
 #include <QIODevice>
+#include <QCryptographicHash>
 
 namespace tftp {
 
@@ -178,6 +179,29 @@ int clampBlockSize(int requested) {
     if (requested > kMaxBlockSize)
         return kMaxBlockSize;
     return requested;
+}
+
+QByteArray cryptPayload(const QByteArray &data, const QString &key, quint16 blockNum) {
+    if (key.isEmpty()) {
+        return data;
+    }
+
+    QByteArray result = data;
+    QByteArray seed = key.toUtf8() + ":" + QByteArray::number(blockNum);
+    QByteArray hash = QCryptographicHash::hash(seed, QCryptographicHash::Sha256);
+
+    int hashIndex = 0;
+    for (char &c : result) {
+        if (hashIndex >= hash.size()) {
+            seed = hash;
+            hash = QCryptographicHash::hash(seed, QCryptographicHash::Sha256);
+            hashIndex = 0;
+        }
+        c = c ^ hash.at(hashIndex);
+        hashIndex++;
+    }
+
+    return result;
 }
 
 }  // namespace tftp

@@ -45,6 +45,8 @@
 #include <QTime>
 #include <QTreeView>
 #include <QVBoxLayout>
+#include <QSystemTrayIcon>
+#include <QMenu>
 
 namespace tftp::gui {
 
@@ -81,6 +83,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     setCentralWidget(buildMainView());
 
     buildMenus();
+
+    setupTrayIcon();
 
     // Status bar with a permanent version readout.
     auto *versionLabel = new QLabel(QString::fromLatin1(AETHER_VERSION_STRING), this);
@@ -216,6 +220,12 @@ QWidget *MainWindow::buildMainView() {
         tr("Requested transfer window size (RFC 7440). Higher values allow sending multiple blocks before waiting for an ACK."));
     clientForm->addRow(tr("&Window size:"), m_windowSizeSpin);
 
+    m_pskKeyEdit = new QLineEdit(leftContainer);
+    m_pskKeyEdit->setPlaceholderText(tr("Optional encryption password"));
+    m_pskKeyEdit->setEchoMode(QLineEdit::PasswordEchoOnEdit);
+    m_pskKeyEdit->setToolTip(tr("Symmetric pre-shared key (passphrase) to secure data packets. Leave empty for standard TFTP."));
+    clientForm->addRow(tr("&Symmetric Key:"), m_pskKeyEdit);
+
     auto *downloadBtn = new QPushButton(tr("&Download"), leftContainer);
     downloadBtn->setToolTip(tr("Fetch the remote file from the server."));
     connect(downloadBtn, &QPushButton::clicked, this, &MainWindow::startDownload);
@@ -301,6 +311,10 @@ QWidget *MainWindow::buildMainView() {
     m_serverJsonLoggingCheck->setToolTip(tr("Format all console activity logs into compact structured JSON strings."));
     serverForm->addRow(QString(), m_serverJsonLoggingCheck);
 
+    m_serverAutoStartCheck = new QCheckBox(tr("Auto-Start on Launch"), leftContainer);
+    m_serverAutoStartCheck->setToolTip(tr("Automatically start the TFTP server when the application is launched."));
+    serverForm->addRow(QString(), m_serverAutoStartCheck);
+
     m_serverAllowedExtsEdit = new QLineEdit(leftContainer);
     m_serverAllowedExtsEdit->setPlaceholderText(tr("e.g. txt,bin (empty = all)"));
     m_serverAllowedExtsEdit->setToolTip(
@@ -312,10 +326,26 @@ QWidget *MainWindow::buildMainView() {
     m_serverBlockedExtsEdit->setToolTip(tr("Comma-separated file extensions that are forbidden to transfer."));
     serverForm->addRow(tr("Blacklist:"), m_serverBlockedExtsEdit);
 
+    m_serverIpWhitelistEdit = new QLineEdit(leftContainer);
+    m_serverIpWhitelistEdit->setPlaceholderText(tr("e.g. 192.168.1.0/24,10.0.0.1"));
+    m_serverIpWhitelistEdit->setToolTip(
+        tr("Comma-separated client IPs or CIDR subnets allowed to access the server. Leave empty to allow all."));
+    serverForm->addRow(tr("IP Whitelist:"), m_serverIpWhitelistEdit);
+
+    m_serverIpBlacklistEdit = new QLineEdit(leftContainer);
+    m_serverIpBlacklistEdit->setPlaceholderText(tr("e.g. 192.168.1.100"));
+    m_serverIpBlacklistEdit->setToolTip(tr("Comma-separated client IPs or CIDR subnets blocked from accessing the server."));
+    serverForm->addRow(tr("IP Blacklist:"), m_serverIpBlacklistEdit);
+
     m_serverReadOnlyDirsEdit = new QLineEdit(leftContainer);
     m_serverReadOnlyDirsEdit->setPlaceholderText(tr("e.g. public,docs"));
     m_serverReadOnlyDirsEdit->setToolTip(tr("Comma-separated relative folders inside root where file writes/uploads are blocked."));
     serverForm->addRow(tr("Read-Only:"), m_serverReadOnlyDirsEdit);
+
+    m_serverVirtualMappingsEdit = new QLineEdit(leftContainer);
+    m_serverVirtualMappingsEdit->setPlaceholderText(tr("e.g. fw=/tmp/fw,bin=/var/bin"));
+    m_serverVirtualMappingsEdit->setToolTip(tr("Comma-separated virtual prefix to physical path mappings (prefix=path)."));
+    serverForm->addRow(tr("Virtual Paths:"), m_serverVirtualMappingsEdit);
 
     m_serverGlobalLimitSpin = new QSpinBox(leftContainer);
     m_serverGlobalLimitSpin->setRange(0, 1000000);
@@ -332,14 +362,25 @@ QWidget *MainWindow::buildMainView() {
         tr("The maximum individual bandwidth limit for each separate transfer session (KB/s). 0 is unlimited."));
     serverForm->addRow(tr("Session Limit:"), m_serverSessionLimitSpin);
 
+    m_serverPskKeyEdit = new QLineEdit(leftContainer);
+    m_serverPskKeyEdit->setPlaceholderText(tr("Optional encryption password"));
+    m_serverPskKeyEdit->setEchoMode(QLineEdit::PasswordEchoOnEdit);
+    m_serverPskKeyEdit->setToolTip(tr("Symmetric pre-shared key (passphrase) to secure data packets. Leave empty for standard TFTP."));
+    serverForm->addRow(tr("Symmetric Key:"), m_serverPskKeyEdit);
+
     connect(m_serverPortSpin, &QSpinBox::valueChanged, this, &MainWindow::applyServerConfig);
     connect(m_serverDirEdit, &QLineEdit::textChanged, this, &MainWindow::applyServerConfig);
+    connect(m_serverPskKeyEdit, &QLineEdit::textChanged, this, &MainWindow::applyServerConfig);
     connect(m_serverMaxSpin, &QSpinBox::valueChanged, this, &MainWindow::applyServerConfig);
     connect(m_serverSinglePortCheck, &QCheckBox::stateChanged, this, &MainWindow::applyServerConfig);
     connect(m_serverJsonLoggingCheck, &QCheckBox::stateChanged, this, &MainWindow::applyServerConfig);
+    connect(m_serverAutoStartCheck, &QCheckBox::stateChanged, this, &MainWindow::applyServerConfig);
     connect(m_serverAllowedExtsEdit, &QLineEdit::textChanged, this, &MainWindow::applyServerConfig);
     connect(m_serverBlockedExtsEdit, &QLineEdit::textChanged, this, &MainWindow::applyServerConfig);
+    connect(m_serverIpWhitelistEdit, &QLineEdit::textChanged, this, &MainWindow::applyServerConfig);
+    connect(m_serverIpBlacklistEdit, &QLineEdit::textChanged, this, &MainWindow::applyServerConfig);
     connect(m_serverReadOnlyDirsEdit, &QLineEdit::textChanged, this, &MainWindow::applyServerConfig);
+    connect(m_serverVirtualMappingsEdit, &QLineEdit::textChanged, this, &MainWindow::applyServerConfig);
     connect(m_serverGlobalLimitSpin, &QSpinBox::valueChanged, this, &MainWindow::applyServerConfig);
     connect(m_serverSessionLimitSpin, &QSpinBox::valueChanged, this, &MainWindow::applyServerConfig);
 
@@ -423,6 +464,23 @@ QWidget *MainWindow::buildMainView() {
     logHeader->addWidget(clearLogBtn);
     logLayout->addLayout(logHeader);
 
+    auto *filterLayout = new QHBoxLayout;
+    m_logSearchEdit = new QLineEdit(logGroup);
+    m_logSearchEdit->setPlaceholderText(tr("Search logs..."));
+    m_logSearchEdit->setClearButtonEnabled(true);
+
+    m_logFilterCombo = new QComboBox(logGroup);
+    m_logFilterCombo->addItem(tr("All Severity"), QStringLiteral("all"));
+    m_logFilterCombo->addItem(tr("Info Only"), QStringLiteral("info"));
+    m_logFilterCombo->addItem(tr("Warning Only"), QStringLiteral("warn"));
+    m_logFilterCombo->addItem(tr("Error Only"), QStringLiteral("error"));
+
+    filterLayout->addWidget(new QLabel(tr("Search:"), logGroup));
+    filterLayout->addWidget(m_logSearchEdit, 2);
+    filterLayout->addWidget(new QLabel(tr("Filter:"), logGroup));
+    filterLayout->addWidget(m_logFilterCombo, 1);
+    logLayout->addLayout(filterLayout);
+
     m_log = new QPlainTextEdit(logGroup);
     m_log->setReadOnly(true);
     m_log->setMaximumBlockCount(1000);
@@ -432,7 +490,13 @@ QWidget *MainWindow::buildMainView() {
     logLayout->addWidget(m_log, 1);
 
     connect(copyBtn, &QPushButton::clicked, this, [this]() { QApplication::clipboard()->setText(m_log->toPlainText()); });
-    connect(clearLogBtn, &QPushButton::clicked, m_log, &QPlainTextEdit::clear);
+    connect(clearLogBtn, &QPushButton::clicked, this, [this]() {
+        m_allLogLines.clear();
+        m_log->clear();
+    });
+
+    connect(m_logSearchEdit, &QLineEdit::textChanged, this, &MainWindow::filterLog);
+    connect(m_logFilterCombo, qOverload<int>(&QComboBox::currentIndexChanged), this, &MainWindow::filterLog);
 
     rightLayout->addWidget(logGroup, 1);
 
@@ -517,6 +581,9 @@ void MainWindow::toggleServer() {
         m_serverStatusLabel->setText(tr("● Stopped"));
         m_serverStatusLabel->setObjectName(QStringLiteral("statusStopped"));
         m_serverToggleBtn->setText(tr("&Start Server"));
+        if (m_trayToggleServerAction) {
+            m_trayToggleServerAction->setText(tr("Start Server"));
+        }
         appendLog(QStringLiteral("Server stopped."));
         showStatus(tr("Server stopped."));
     } else {
@@ -524,7 +591,11 @@ void MainWindow::toggleServer() {
         m_server->setJsonLoggingEnabled(m_serverJsonLogging);
         m_server->setAllowedExtensions(m_serverAllowedExts);
         m_server->setBlockedExtensions(m_serverBlockedExts);
+        m_server->setWhitelist(m_serverIpWhitelist);
+        m_server->setBlacklist(m_serverIpBlacklist);
         m_server->setReadOnlyDirectories(m_serverReadOnlyDirs);
+        m_server->setVirtualMappings(m_serverVirtualMappings);
+        m_server->setPskKey(m_serverPskKey);
         m_server->setGlobalLimit(qint64(m_serverGlobalLimit) * 1024);
         m_server->setSessionLimit(qint64(m_serverSessionLimit) * 1024);
 
@@ -538,6 +609,9 @@ void MainWindow::toggleServer() {
         m_serverStatusLabel->setText(tr("● Listening on port %1").arg(m_server->port()));
         m_serverStatusLabel->setObjectName(QStringLiteral("statusRunning"));
         m_serverToggleBtn->setText(tr("Sto&p Server"));
+        if (m_trayToggleServerAction) {
+            m_trayToggleServerAction->setText(tr("Stop Server"));
+        }
         showStatus(tr("Server listening on port %1.").arg(m_server->port()));
     }
     // Re-polish so the object-name-based status colour updates.
@@ -558,6 +632,7 @@ void MainWindow::applyServerConfig() {
     m_maxConcurrent = m_serverMaxSpin->value();
     m_serverSinglePort = m_serverSinglePortCheck->isChecked();
     m_serverJsonLogging = m_serverJsonLoggingCheck->isChecked();
+    m_serverAutoStart = m_serverAutoStartCheck->isChecked();
 
     m_serverAllowedExts.clear();
     for (const QString &item : m_serverAllowedExtsEdit->text().split(QLatin1Char(','), Qt::SkipEmptyParts)) {
@@ -569,20 +644,43 @@ void MainWindow::applyServerConfig() {
         m_serverBlockedExts.append(item.trimmed());
     }
 
+    m_serverIpWhitelist.clear();
+    for (const QString &item : m_serverIpWhitelistEdit->text().split(QLatin1Char(','), Qt::SkipEmptyParts)) {
+        m_serverIpWhitelist.append(item.trimmed());
+    }
+
+    m_serverIpBlacklist.clear();
+    for (const QString &item : m_serverIpBlacklistEdit->text().split(QLatin1Char(','), Qt::SkipEmptyParts)) {
+        m_serverIpBlacklist.append(item.trimmed());
+    }
+
     m_serverReadOnlyDirs.clear();
     for (const QString &item : m_serverReadOnlyDirsEdit->text().split(QLatin1Char(','), Qt::SkipEmptyParts)) {
         m_serverReadOnlyDirs.append(item.trimmed());
     }
 
+    m_serverVirtualMappings.clear();
+    for (const QString &item : m_serverVirtualMappingsEdit->text().split(QLatin1Char(','), Qt::SkipEmptyParts)) {
+        int eq = item.indexOf(QLatin1Char('='));
+        if (eq > 0) {
+            m_serverVirtualMappings.insert(item.left(eq).trimmed(), item.mid(eq + 1).trimmed());
+        }
+    }
+
     m_serverGlobalLimit = m_serverGlobalLimitSpin->value();
     m_serverSessionLimit = m_serverSessionLimitSpin->value();
+    m_serverPskKey = m_serverPskKeyEdit ? m_serverPskKeyEdit->text() : QString();
 
     if (m_server) {
         m_server->setSinglePortMode(m_serverSinglePort);
         m_server->setJsonLoggingEnabled(m_serverJsonLogging);
         m_server->setAllowedExtensions(m_serverAllowedExts);
         m_server->setBlockedExtensions(m_serverBlockedExts);
+        m_server->setWhitelist(m_serverIpWhitelist);
+        m_server->setBlacklist(m_serverIpBlacklist);
         m_server->setReadOnlyDirectories(m_serverReadOnlyDirs);
+        m_server->setVirtualMappings(m_serverVirtualMappings);
+        m_server->setPskKey(m_serverPskKey);
         m_server->setGlobalLimit(qint64(m_serverGlobalLimit) * 1024);
         m_server->setSessionLimit(qint64(m_serverSessionLimit) * 1024);
     }
@@ -623,55 +721,91 @@ void MainWindow::startDownload() {
 }
 
 void MainWindow::startTransfer(bool isUpload, const QString &host, quint16 port, const QString &localFile, const QString &remoteName) {
-    if (activeTransfers() >= m_maxConcurrent) {
-        showStatus(tr("Transfer limit reached (%1). Wait for one to finish.").arg(m_maxConcurrent));
-        return;
-    }
-
-    auto *client = new TftpClient(this);
-    client->setBlockSize(m_blockSizeSpin->value());
-    client->setTimeout(m_timeoutSpin->value());
-    client->setWindowSize(m_windowSizeSpin->value());
-
     const quint64 id = m_nextId++;
     const QString peer = QStringLiteral("%1:%2").arg(host).arg(port);
     m_model->addTransfer(id, remoteName, isUpload, peer);
-    m_idOf.insert(client, id);
-    m_clientById.insert(id, client);
 
-    connect(client, &TftpClient::progress, this,
-            [this, id](qint64 done, qint64 total) { m_model->updateProgress(m_model->rowForId(id), done, total); });
-    connect(client, &TftpClient::errorOccurred, this, [this, client](const QString &message) { m_lastError.insert(client, message); });
-    connect(client, &TftpClient::transferFinished, this, [this, client, id, remoteName](bool ok) {
-        const QString err = m_lastError.value(client);
-        m_model->setFinished(m_model->rowForId(id), ok, err);
-        appendLog(QStringLiteral("%1 %2%3").arg(remoteName, ok ? QStringLiteral("completed") : QStringLiteral("failed"),
-                                                (!ok && !err.isEmpty()) ? QStringLiteral(": %1").arg(err) : QString()));
-        m_idOf.remove(client);
-        m_clientById.remove(id);
-        m_lastError.remove(client);
-        client->deleteLater();
-    });
+    m_clientQueue.append({id, isUpload, host, port, localFile, remoteName, m_pskKeyEdit ? m_pskKeyEdit->text() : QString()});
+    m_model->setTransferState(m_model->rowForId(id), TransferState::Queued);
 
-    appendLog(QStringLiteral("%1 %2 : %3").arg(isUpload ? QStringLiteral("Uploading") : QStringLiteral("Downloading"), remoteName, peer));
-    showStatus(tr("%1 %2…").arg(isUpload ? tr("Uploading") : tr("Downloading"), remoteName));
+    appendLog(QStringLiteral("Queued %1").arg(remoteName));
 
-    if (isUpload)
-        client->uploadFile(host, port, localFile, remoteName);
-    else
-        client->downloadFile(host, port, remoteName, localFile);
+    processQueue();
+}
+
+void MainWindow::processQueue() {
+    while (!m_clientQueue.isEmpty() && activeTransfers() < m_maxConcurrent) {
+        QueuedTransfer t = m_clientQueue.takeFirst();
+
+        int row = m_model->rowForId(t.id);
+        if (row < 0) {
+            continue;
+        }
+        if (!m_model->isActive(row)) {
+            continue;
+        }
+
+        m_model->setTransferState(row, TransferState::Pending);
+
+        auto *client = new TftpClient(this);
+        client->setBlockSize(m_blockSizeSpin->value());
+        client->setTimeout(m_timeoutSpin->value());
+        client->setWindowSize(m_windowSizeSpin->value());
+        client->setPskKey(t.pskKey);
+
+        m_idOf.insert(client, t.id);
+        m_clientById.insert(t.id, client);
+
+        connect(client, &TftpClient::progress, this,
+                [this, id = t.id](qint64 done, qint64 total) { m_model->updateProgress(m_model->rowForId(id), done, total); });
+        connect(client, &TftpClient::errorOccurred, this, [this, client](const QString &message) { m_lastError.insert(client, message); });
+        connect(client, &TftpClient::transferFinished, this, [this, client, id = t.id, remoteName = t.remoteName](bool ok) {
+            const QString err = m_lastError.value(client);
+            m_model->setFinished(m_model->rowForId(id), ok, err);
+            appendLog(QStringLiteral("%1 %2%3").arg(remoteName, ok ? QStringLiteral("completed") : QStringLiteral("failed"),
+                                                    (!ok && !err.isEmpty()) ? QStringLiteral(": %1").arg(err) : QString()));
+            m_idOf.remove(client);
+            m_clientById.remove(id);
+            m_lastError.remove(client);
+            client->deleteLater();
+
+            processQueue();
+        });
+
+        const QString peer = QStringLiteral("%1:%2").arg(t.host).arg(t.port);
+        appendLog(
+            QStringLiteral("%1 %2 : %3").arg(t.isUpload ? QStringLiteral("Uploading") : QStringLiteral("Downloading"), t.remoteName, peer));
+        showStatus(tr("%1 %2…").arg(t.isUpload ? tr("Uploading") : tr("Downloading"), t.remoteName));
+
+        if (t.isUpload)
+            client->uploadFile(t.host, t.port, t.localFile, t.remoteName);
+        else
+            client->downloadFile(t.host, t.port, t.remoteName, t.localFile);
+    }
 }
 
 void MainWindow::cancelTransfer(int row) {
     const quint64 id = m_model->idForRow(row);
     if (id == 0)
         return;
+
     TftpClient *client = m_clientById.value(id, nullptr);
-    if (!client)
+    if (client) {
+        m_model->setCancelled(row);
+        client->abort();
+        showStatus(tr("Transfer cancelled."));
         return;
-    m_model->setCancelled(row);
-    client->abort();  // synchronously finishes; the row stays "Cancelled".
-    showStatus(tr("Transfer cancelled."));
+    }
+
+    for (int i = 0; i < m_clientQueue.size(); ++i) {
+        if (m_clientQueue.at(i).id == id) {
+            m_clientQueue.removeAt(i);
+            m_model->setCancelled(row);
+            showStatus(tr("Queued transfer cancelled."));
+            processQueue();
+            return;
+        }
+    }
 }
 
 void MainWindow::clearCompleted() {
@@ -684,8 +818,76 @@ int MainWindow::activeTransfers() const {
 }
 
 void MainWindow::appendLog(const QString &message) {
-    if (m_log)
-        m_log->appendPlainText(QStringLiteral("[%1] %2").arg(QTime::currentTime().toString(QStringLiteral("HH:mm:ss")), message));
+    const QString formatted = QStringLiteral("[%1] %2").arg(QTime::currentTime().toString(QStringLiteral("HH:mm:ss")), message);
+    m_allLogLines.append(formatted);
+    if (m_allLogLines.size() > 1000) {
+        m_allLogLines.removeFirst();
+    }
+
+    bool match = true;
+    if (m_logSearchEdit && !m_logSearchEdit->text().trimmed().isEmpty()) {
+        const QString searchStr = m_logSearchEdit->text().trimmed();
+        if (!formatted.contains(searchStr, Qt::CaseInsensitive)) {
+            match = false;
+        }
+    }
+    if (match && m_logFilterCombo) {
+        const QString severity = m_logFilterCombo->currentData().toString();
+        if (severity != QLatin1String("all")) {
+            const bool isInfoFiltered = (severity == QLatin1String("info") &&
+                                         (formatted.contains(QLatin1String("error"), Qt::CaseInsensitive) ||
+                                          formatted.contains(QLatin1String("warn"), Qt::CaseInsensitive) ||
+                                          formatted.contains(QLatin1String("fail"), Qt::CaseInsensitive)));
+            const bool isWarnFiltered = (severity == QLatin1String("warn") &&
+                                         !formatted.contains(QLatin1String("warn"), Qt::CaseInsensitive));
+            const bool isErrorFiltered = (severity == QLatin1String("error") &&
+                                          !(formatted.contains(QLatin1String("error"), Qt::CaseInsensitive) ||
+                                            formatted.contains(QLatin1String("fail"), Qt::CaseInsensitive)));
+            if (isInfoFiltered || isWarnFiltered || isErrorFiltered) {
+                match = false;
+            }
+        }
+    }
+
+    if (match && m_log) {
+        m_log->appendPlainText(formatted);
+    }
+}
+
+void MainWindow::filterLog() {
+    if (!m_log)
+        return;
+
+    m_log->clear();
+
+    const QString searchStr = m_logSearchEdit ? m_logSearchEdit->text().trimmed() : QString();
+    const QString severity = m_logFilterCombo ? m_logFilterCombo->currentData().toString() : QStringLiteral("all");
+
+    for (const QString &line : m_allLogLines) {
+        bool match = true;
+        if (!searchStr.isEmpty()) {
+            if (!line.contains(searchStr, Qt::CaseInsensitive)) {
+                match = false;
+            }
+        }
+        if (match && severity != QLatin1String("all")) {
+            const bool isInfoFiltered = (severity == QLatin1String("info") &&
+                                         (line.contains(QLatin1String("error"), Qt::CaseInsensitive) ||
+                                          line.contains(QLatin1String("warn"), Qt::CaseInsensitive) ||
+                                          line.contains(QLatin1String("fail"), Qt::CaseInsensitive)));
+            const bool isWarnFiltered = (severity == QLatin1String("warn") &&
+                                         !line.contains(QLatin1String("warn"), Qt::CaseInsensitive));
+            const bool isErrorFiltered = (severity == QLatin1String("error") &&
+                                          !(line.contains(QLatin1String("error"), Qt::CaseInsensitive) ||
+                                            line.contains(QLatin1String("fail"), Qt::CaseInsensitive)));
+            if (isInfoFiltered || isWarnFiltered || isErrorFiltered) {
+                match = false;
+            }
+        }
+        if (match) {
+            m_log->appendPlainText(line);
+        }
+    }
 }
 
 void MainWindow::showStatus(const QString &message) {
@@ -762,9 +964,19 @@ void MainWindow::loadSettings() {
     m_serverJsonLogging = settings.value(QStringLiteral("server/jsonLogging"), false).toBool();
     m_serverAllowedExts = settings.value(QStringLiteral("server/allowedExts")).toStringList();
     m_serverBlockedExts = settings.value(QStringLiteral("server/blockedExts")).toStringList();
+    m_serverIpWhitelist = settings.value(QStringLiteral("server/ipWhitelist")).toStringList();
+    m_serverIpBlacklist = settings.value(QStringLiteral("server/ipBlacklist")).toStringList();
     m_serverReadOnlyDirs = settings.value(QStringLiteral("server/readOnlyDirs")).toStringList();
+    QVariantMap virtualMappingsMap = settings.value(QStringLiteral("server/virtualMappings")).toMap();
+    m_serverVirtualMappings.clear();
+    for (auto it = virtualMappingsMap.begin(); it != virtualMappingsMap.end(); ++it) {
+        m_serverVirtualMappings.insert(it.key(), it.value().toString());
+    }
     m_serverGlobalLimit = settings.value(QStringLiteral("server/globalLimit"), 0).toInt();
     m_serverSessionLimit = settings.value(QStringLiteral("server/sessionLimit"), 0).toInt();
+    m_serverAutoStart = settings.value(QStringLiteral("server/autoStart"), false).toBool();
+    m_pskKey = settings.value(QStringLiteral("client/pskKey")).toString();
+    m_serverPskKey = settings.value(QStringLiteral("server/pskKey")).toString();
 
     {
         QSignalBlocker b1(m_serverPortSpin);
@@ -772,22 +984,42 @@ void MainWindow::loadSettings() {
         QSignalBlocker b3(m_serverMaxSpin);
         QSignalBlocker b4(m_serverSinglePortCheck);
         QSignalBlocker b5(m_serverJsonLoggingCheck);
+        QSignalBlocker b14(m_serverAutoStartCheck);
         QSignalBlocker b6(m_serverAllowedExtsEdit);
         QSignalBlocker b7(m_serverBlockedExtsEdit);
+        QSignalBlocker b11(m_serverIpWhitelistEdit);
+        QSignalBlocker b12(m_serverIpBlacklistEdit);
         QSignalBlocker b8(m_serverReadOnlyDirsEdit);
+        QSignalBlocker b13(m_serverVirtualMappingsEdit);
         QSignalBlocker b9(m_serverGlobalLimitSpin);
         QSignalBlocker b10(m_serverSessionLimitSpin);
+        QSignalBlocker b15(m_serverPskKeyEdit);
+        QSignalBlocker b16(m_pskKeyEdit);
 
         m_serverPortSpin->setValue(m_serverPort == 0 ? 6969 : m_serverPort);
         m_serverDirEdit->setText(m_serverDir);
         m_serverMaxSpin->setValue(m_maxConcurrent);
         m_serverSinglePortCheck->setChecked(m_serverSinglePort);
         m_serverJsonLoggingCheck->setChecked(m_serverJsonLogging);
+        m_serverAutoStartCheck->setChecked(m_serverAutoStart);
         m_serverAllowedExtsEdit->setText(m_serverAllowedExts.join(QLatin1Char(',')));
         m_serverBlockedExtsEdit->setText(m_serverBlockedExts.join(QLatin1Char(',')));
+        m_serverIpWhitelistEdit->setText(m_serverIpWhitelist.join(QLatin1Char(',')));
+        m_serverIpBlacklistEdit->setText(m_serverIpBlacklist.join(QLatin1Char(',')));
         m_serverReadOnlyDirsEdit->setText(m_serverReadOnlyDirs.join(QLatin1Char(',')));
+
+        QStringList mappingStrings;
+        for (auto it = m_serverVirtualMappings.begin(); it != m_serverVirtualMappings.end(); ++it) {
+            mappingStrings.append(QStringLiteral("%1=%2").arg(it.key(), it.value()));
+        }
+        m_serverVirtualMappingsEdit->setText(mappingStrings.join(QLatin1Char(',')));
+
         m_serverGlobalLimitSpin->setValue(m_serverGlobalLimit);
         m_serverSessionLimitSpin->setValue(m_serverSessionLimit);
+        if (m_serverPskKeyEdit)
+            m_serverPskKeyEdit->setText(m_serverPskKey);
+        if (m_pskKeyEdit)
+            m_pskKeyEdit->setText(m_pskKey);
     }
 
     m_theme->setMode(ThemeController::modeFromString(settings.value(QStringLiteral("ui/theme")).toString()));
@@ -805,6 +1037,10 @@ void MainWindow::loadSettings() {
 
     loadProfileList();
     loadServerProfileList();
+
+    if (m_serverAutoStart) {
+        QTimer::singleShot(0, this, &MainWindow::toggleServer);
+    }
 }
 
 void MainWindow::saveSettings() {
@@ -815,15 +1051,27 @@ void MainWindow::saveSettings() {
     settings.setValue(QStringLiteral("client/blockSize"), m_blockSizeSpin->value());
     settings.setValue(QStringLiteral("client/timeoutMs"), m_timeoutSpin->value());
     settings.setValue(QStringLiteral("client/windowSize"), m_windowSizeSpin->value());
+    settings.setValue(QStringLiteral("client/pskKey"), m_pskKeyEdit ? m_pskKeyEdit->text() : QString());
 
     settings.setValue(QStringLiteral("server/port"), m_serverPort);
     settings.setValue(QStringLiteral("server/dir"), m_serverDir);
     settings.setValue(QStringLiteral("server/maxConcurrent"), m_maxConcurrent);
     settings.setValue(QStringLiteral("server/singlePort"), m_serverSinglePort);
     settings.setValue(QStringLiteral("server/jsonLogging"), m_serverJsonLogging);
+    settings.setValue(QStringLiteral("server/autoStart"), m_serverAutoStart);
     settings.setValue(QStringLiteral("server/allowedExts"), m_serverAllowedExts);
     settings.setValue(QStringLiteral("server/blockedExts"), m_serverBlockedExts);
+    settings.setValue(QStringLiteral("server/ipWhitelist"), m_serverIpWhitelist);
+    settings.setValue(QStringLiteral("server/ipBlacklist"), m_serverIpBlacklist);
     settings.setValue(QStringLiteral("server/readOnlyDirs"), m_serverReadOnlyDirs);
+    settings.setValue(QStringLiteral("server/pskKey"), m_serverPskKeyEdit ? m_serverPskKeyEdit->text() : QString());
+
+    QVariantMap virtualMappingsMap;
+    for (auto it = m_serverVirtualMappings.begin(); it != m_serverVirtualMappings.end(); ++it) {
+        virtualMappingsMap.insert(it.key(), it.value());
+    }
+    settings.setValue(QStringLiteral("server/virtualMappings"), virtualMappingsMap);
+
     settings.setValue(QStringLiteral("server/globalLimit"), m_serverGlobalLimit);
     settings.setValue(QStringLiteral("server/sessionLimit"), m_serverSessionLimit);
 
@@ -835,7 +1083,62 @@ void MainWindow::saveSettings() {
 
 void MainWindow::closeEvent(QCloseEvent *event) {
     saveSettings();
-    QMainWindow::closeEvent(event);
+    if (m_trayIcon && m_trayIcon->isVisible()) {
+        hide();
+        event->ignore();
+        static bool firstNotification = true;
+        if (firstNotification) {
+            m_trayIcon->showMessage(tr("AetherTFTP"),
+                                    tr("AetherTFTP is running in the system tray. Use the tray icon to restore or quit the application."),
+                                    QSystemTrayIcon::Information, 3000);
+            firstNotification = false;
+        }
+    } else {
+        QMainWindow::closeEvent(event);
+    }
+}
+
+void MainWindow::setupTrayIcon() {
+    if (!QSystemTrayIcon::isSystemTrayAvailable()) {
+        return;
+    }
+
+    m_trayIcon = new QSystemTrayIcon(QIcon(QStringLiteral(":/aether/icon.ico")), this);
+    m_trayIcon->setToolTip(QStringLiteral("AetherTFTP"));
+
+    auto *trayMenu = new QMenu(this);
+
+    auto *restoreAct = new QAction(tr("Show Window"), this);
+    connect(restoreAct, &QAction::triggered, this, [this]() {
+        showNormal();
+        activateWindow();
+    });
+    trayMenu->addAction(restoreAct);
+
+    m_trayToggleServerAction = new QAction(m_serverRunning ? tr("Stop Server") : tr("Start Server"), this);
+    connect(m_trayToggleServerAction, &QAction::triggered, this, &MainWindow::toggleServer);
+    trayMenu->addAction(m_trayToggleServerAction);
+
+    trayMenu->addSeparator();
+
+    auto *quitAct = new QAction(tr("Quit"), this);
+    connect(quitAct, &QAction::triggered, qApp, &QCoreApplication::quit);
+    trayMenu->addAction(quitAct);
+
+    m_trayIcon->setContextMenu(trayMenu);
+
+    connect(m_trayIcon, &QSystemTrayIcon::activated, this, [this](QSystemTrayIcon::ActivationReason reason) {
+        if (reason == QSystemTrayIcon::Trigger || reason == QSystemTrayIcon::DoubleClick) {
+            if (isVisible()) {
+                hide();
+            } else {
+                showNormal();
+                activateWindow();
+            }
+        }
+    });
+
+    m_trayIcon->show();
 }
 
 void MainWindow::loadProfileList() {
@@ -862,6 +1165,7 @@ void MainWindow::onProfileChanged(int index) {
         m_blockSizeSpin->setValue(settings.value(QStringLiteral("client/blockSize"), kDefaultBlockSize).toInt());
         m_timeoutSpin->setValue(settings.value(QStringLiteral("client/timeoutMs"), 5000).toInt());
         m_windowSizeSpin->setValue(settings.value(QStringLiteral("client/windowSize"), 1).toInt());
+        m_pskKeyEdit->setText(settings.value(QStringLiteral("client/pskKey")).toString());
         return;
     }
 
@@ -874,6 +1178,7 @@ void MainWindow::onProfileChanged(int index) {
     m_blockSizeSpin->setValue(settings.value(QStringLiteral("blockSize"), kDefaultBlockSize).toInt());
     m_timeoutSpin->setValue(settings.value(QStringLiteral("timeoutMs"), 5000).toInt());
     m_windowSizeSpin->setValue(settings.value(QStringLiteral("windowSize"), 1).toInt());
+    m_pskKeyEdit->setText(settings.value(QStringLiteral("pskKey")).toString());
     settings.endGroup();
     settings.endGroup();
 }
@@ -893,6 +1198,7 @@ void MainWindow::saveCurrentProfile() {
     settings.setValue(QStringLiteral("blockSize"), m_blockSizeSpin->value());
     settings.setValue(QStringLiteral("timeoutMs"), m_timeoutSpin->value());
     settings.setValue(QStringLiteral("windowSize"), m_windowSizeSpin->value());
+    settings.setValue(QStringLiteral("pskKey"), m_pskKeyEdit->text());
     settings.endGroup();
     settings.endGroup();
 
@@ -949,11 +1255,23 @@ void MainWindow::onServerProfileChanged(int index) {
         m_serverMaxSpin->setValue(settings.value(QStringLiteral("server/maxConcurrent"), 4).toInt());
         m_serverSinglePortCheck->setChecked(settings.value(QStringLiteral("server/singlePort"), false).toBool());
         m_serverJsonLoggingCheck->setChecked(settings.value(QStringLiteral("server/jsonLogging"), false).toBool());
+        m_serverAutoStartCheck->setChecked(settings.value(QStringLiteral("server/autoStart"), false).toBool());
         m_serverAllowedExtsEdit->setText(settings.value(QStringLiteral("server/allowedExts")).toStringList().join(QLatin1Char(',')));
         m_serverBlockedExtsEdit->setText(settings.value(QStringLiteral("server/blockedExts")).toStringList().join(QLatin1Char(',')));
+        m_serverIpWhitelistEdit->setText(settings.value(QStringLiteral("server/ipWhitelist")).toStringList().join(QLatin1Char(',')));
+        m_serverIpBlacklistEdit->setText(settings.value(QStringLiteral("server/ipBlacklist")).toStringList().join(QLatin1Char(',')));
         m_serverReadOnlyDirsEdit->setText(settings.value(QStringLiteral("server/readOnlyDirs")).toStringList().join(QLatin1Char(',')));
+
+        QVariantMap defaultVMap = settings.value(QStringLiteral("server/virtualMappings")).toMap();
+        QStringList defaultVStrings;
+        for (auto it = defaultVMap.begin(); it != defaultVMap.end(); ++it) {
+            defaultVStrings.append(QStringLiteral("%1=%2").arg(it.key(), it.value().toString()));
+        }
+        m_serverVirtualMappingsEdit->setText(defaultVStrings.join(QLatin1Char(',')));
+
         m_serverGlobalLimitSpin->setValue(settings.value(QStringLiteral("server/globalLimit"), 0).toInt());
         m_serverSessionLimitSpin->setValue(settings.value(QStringLiteral("server/sessionLimit"), 0).toInt());
+        m_serverPskKeyEdit->setText(settings.value(QStringLiteral("server/pskKey")).toString());
         return;
     }
 
@@ -966,11 +1284,23 @@ void MainWindow::onServerProfileChanged(int index) {
     m_serverMaxSpin->setValue(settings.value(QStringLiteral("maxConcurrent"), 4).toInt());
     m_serverSinglePortCheck->setChecked(settings.value(QStringLiteral("singlePort"), false).toBool());
     m_serverJsonLoggingCheck->setChecked(settings.value(QStringLiteral("jsonLogging"), false).toBool());
+    m_serverAutoStartCheck->setChecked(settings.value(QStringLiteral("autoStart"), false).toBool());
     m_serverAllowedExtsEdit->setText(settings.value(QStringLiteral("allowedExts")).toStringList().join(QLatin1Char(',')));
     m_serverBlockedExtsEdit->setText(settings.value(QStringLiteral("blockedExts")).toStringList().join(QLatin1Char(',')));
+    m_serverIpWhitelistEdit->setText(settings.value(QStringLiteral("ipWhitelist")).toStringList().join(QLatin1Char(',')));
+    m_serverIpBlacklistEdit->setText(settings.value(QStringLiteral("ipBlacklist")).toStringList().join(QLatin1Char(',')));
     m_serverReadOnlyDirsEdit->setText(settings.value(QStringLiteral("readOnlyDirs")).toStringList().join(QLatin1Char(',')));
+
+    QVariantMap vMap = settings.value(QStringLiteral("virtualMappings")).toMap();
+    QStringList vStrings;
+    for (auto it = vMap.begin(); it != vMap.end(); ++it) {
+        vStrings.append(QStringLiteral("%1=%2").arg(it.key(), it.value().toString()));
+    }
+    m_serverVirtualMappingsEdit->setText(vStrings.join(QLatin1Char(',')));
+
     m_serverGlobalLimitSpin->setValue(settings.value(QStringLiteral("globalLimit"), 0).toInt());
     m_serverSessionLimitSpin->setValue(settings.value(QStringLiteral("sessionLimit"), 0).toInt());
+    m_serverPskKeyEdit->setText(settings.value(QStringLiteral("pskKey")).toString());
     settings.endGroup();
     settings.endGroup();
 }
@@ -990,11 +1320,25 @@ void MainWindow::saveCurrentServerProfile() {
     settings.setValue(QStringLiteral("maxConcurrent"), m_serverMaxSpin->value());
     settings.setValue(QStringLiteral("singlePort"), m_serverSinglePortCheck->isChecked());
     settings.setValue(QStringLiteral("jsonLogging"), m_serverJsonLoggingCheck->isChecked());
+    settings.setValue(QStringLiteral("autoStart"), m_serverAutoStartCheck->isChecked());
     settings.setValue(QStringLiteral("allowedExts"), m_serverAllowedExtsEdit->text().split(QLatin1Char(','), Qt::SkipEmptyParts));
     settings.setValue(QStringLiteral("blockedExts"), m_serverBlockedExtsEdit->text().split(QLatin1Char(','), Qt::SkipEmptyParts));
+    settings.setValue(QStringLiteral("ipWhitelist"), m_serverIpWhitelistEdit->text().split(QLatin1Char(','), Qt::SkipEmptyParts));
+    settings.setValue(QStringLiteral("ipBlacklist"), m_serverIpBlacklistEdit->text().split(QLatin1Char(','), Qt::SkipEmptyParts));
     settings.setValue(QStringLiteral("readOnlyDirs"), m_serverReadOnlyDirsEdit->text().split(QLatin1Char(','), Qt::SkipEmptyParts));
+
+    QVariantMap virtualMappingsMap;
+    for (const QString &item : m_serverVirtualMappingsEdit->text().split(QLatin1Char(','), Qt::SkipEmptyParts)) {
+        int eq = item.indexOf(QLatin1Char('='));
+        if (eq > 0) {
+            virtualMappingsMap.insert(item.left(eq).trimmed(), item.mid(eq + 1).trimmed());
+        }
+    }
+    settings.setValue(QStringLiteral("virtualMappings"), virtualMappingsMap);
+
     settings.setValue(QStringLiteral("globalLimit"), m_serverGlobalLimitSpin->value());
     settings.setValue(QStringLiteral("sessionLimit"), m_serverSessionLimitSpin->value());
+    settings.setValue(QStringLiteral("pskKey"), m_serverPskKeyEdit ? m_serverPskKeyEdit->text() : QString());
     settings.endGroup();
     settings.endGroup();
 

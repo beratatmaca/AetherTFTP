@@ -61,6 +61,13 @@ int CliRunner::run(QCoreApplication &app, const QStringList &args) {
          QStringLiteral("Per-block timeout in seconds (RFC 2349, default 5)."),
          QStringLiteral("timeout")},
         {QStringLiteral("bind"), QStringLiteral("Server bind address (default 0.0.0.0)."), QStringLiteral("address")},
+        {QStringLiteral("ip-whitelist"), QStringLiteral("Comma-separated IP/CIDR subnets allowed to access the server."),
+         QStringLiteral("subnets")},
+        {QStringLiteral("ip-blacklist"), QStringLiteral("Comma-separated IP/CIDR subnets blocked from accessing the server."),
+         QStringLiteral("subnets")},
+        {QStringLiteral("virtual-mappings"), QStringLiteral("Comma-separated prefix=path mappings (e.g. fw=/tmp/fw,bin=/var/bin)."),
+         QStringLiteral("mappings")},
+        {QStringLiteral("psk"), QStringLiteral("Symmetric pre-shared key (passphrase) to secure data packets."), QStringLiteral("key")},
     });
 
     QStringList argsToParse = args;
@@ -102,6 +109,37 @@ int CliRunner::runServer(QCommandLineParser &parser, quint16 port) {
         out().flush();
     });
 
+    if (parser.isSet(QStringLiteral("ip-whitelist"))) {
+        QStringList whitelist;
+        for (const QString &item : parser.value(QStringLiteral("ip-whitelist")).split(QLatin1Char(','), Qt::SkipEmptyParts)) {
+            whitelist.append(item.trimmed());
+        }
+        server.setWhitelist(whitelist);
+    }
+
+    if (parser.isSet(QStringLiteral("ip-blacklist"))) {
+        QStringList blacklist;
+        for (const QString &item : parser.value(QStringLiteral("ip-blacklist")).split(QLatin1Char(','), Qt::SkipEmptyParts)) {
+            blacklist.append(item.trimmed());
+        }
+        server.setBlacklist(blacklist);
+    }
+
+    if (parser.isSet(QStringLiteral("virtual-mappings"))) {
+        QMap<QString, QString> mappings;
+        for (const QString &item : parser.value(QStringLiteral("virtual-mappings")).split(QLatin1Char(','), Qt::SkipEmptyParts)) {
+            int eq = item.indexOf(QLatin1Char('='));
+            if (eq > 0) {
+                mappings.insert(item.left(eq).trimmed(), item.mid(eq + 1).trimmed());
+            }
+        }
+        server.setVirtualMappings(mappings);
+    }
+
+    if (parser.isSet(QStringLiteral("psk"))) {
+        server.setPskKey(parser.value(QStringLiteral("psk")));
+    }
+
     if (!server.listen(QHostAddress(bindAddr), port, dir)) {
         err() << "Error: " << server.lastError() << "\n";
         err().flush();
@@ -136,6 +174,8 @@ int CliRunner::runTransfer(QCommandLineParser &parser, quint16 port, bool isPut)
         client.setBlockSize(parser.value(QStringLiteral("blocksize")).toInt());
     if (parser.isSet(QStringLiteral("timeout")))
         client.setTimeout(parser.value(QStringLiteral("timeout")).toInt() * 1000);
+    if (parser.isSet(QStringLiteral("psk")))
+        client.setPskKey(parser.value(QStringLiteral("psk")));
 
     QObject::connect(&client, &TftpClient::errorOccurred, [](const QString &m) {
         err() << "Error: " << m << "\n";
