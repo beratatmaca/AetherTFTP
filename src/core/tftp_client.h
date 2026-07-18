@@ -86,7 +86,8 @@ public:
      *
      * Notifies the peer with an ERROR datagram (RFC 1350), tears down the
      * socket/timer/file, discards a partially written download, and emits
-     * @ref transferFinished(false). A no-op when no transfer is running.
+     * @ref transferFinished(bool) "transferFinished(false)". A no-op when no
+     * transfer is running.
      */
     void abort();
 

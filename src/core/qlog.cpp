@@ -51,7 +51,7 @@ void qlogMessageHandler(QtMsgType type, const QMessageLogContext &context, const
     const QString formattedMsg = QStringLiteral("[%1] [%2] [%3] %4").arg(timestamp, levelStr, category, msg);
 
     // 1. Output to standard error (stderr) to protect stdout from being corrupted during pipeline redirections
-    std::cerr << qPrintable(systemdPrefix) << qPrintable(formattedMsg) << std::endl;
+    std::cerr << qPrintable(systemdPrefix) << qPrintable(formattedMsg) << "\n";
 
     // 2. Output to journalctl / syslog (Linux/Unix only)
 #ifdef Q_OS_UNIX

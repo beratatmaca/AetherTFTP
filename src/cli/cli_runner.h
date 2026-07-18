@@ -21,6 +21,8 @@ public:
     /**
      * @brief Parse arguments and execute the requested operation.
      * @param app The application whose event loop is used for async transfers.
+     * @param args Arguments to parse; defaults to the process's real
+     *     command-line arguments when empty.
      * @return A process exit code (0 on success).
      */
     static int run(QCoreApplication &app, const QStringList &args = {});

@@ -28,11 +28,11 @@ void SpeedChartWidget::clear() {
 static QString formatSpeed(double bytesPerSec) {
     if (bytesPerSec < 1024.0) {
         return QString::number(bytesPerSec, 'f', 0) + QStringLiteral(" B/s");
-    } else if (bytesPerSec < 1024.0 * 1024.0) {
-        return QString::number(bytesPerSec / 1024.0, 'f', 1) + QStringLiteral(" KB/s");
-    } else {
-        return QString::number(bytesPerSec / (1024.0 * 1024.0), 'f', 1) + QStringLiteral(" MB/s");
     }
+    if (bytesPerSec < 1024.0 * 1024.0) {
+        return QString::number(bytesPerSec / 1024.0, 'f', 1) + QStringLiteral(" KB/s");
+    }
+    return QString::number(bytesPerSec / (1024.0 * 1024.0), 'f', 1) + QStringLiteral(" MB/s");
 }
 
 void SpeedChartWidget::paintEvent(QPaintEvent *event) {

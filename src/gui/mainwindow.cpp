@@ -212,7 +212,8 @@ QWidget *MainWindow::buildMainView() {
     m_windowSizeSpin = new QSpinBox(leftContainer);
     m_windowSizeSpin->setRange(1, 64);
     m_windowSizeSpin->setValue(1);
-    m_windowSizeSpin->setToolTip(tr("Requested transfer window size (RFC 7440). Higher values allow sending multiple blocks before waiting for an ACK."));
+    m_windowSizeSpin->setToolTip(
+        tr("Requested transfer window size (RFC 7440). Higher values allow sending multiple blocks before waiting for an ACK."));
     clientForm->addRow(tr("&Window size:"), m_windowSizeSpin);
 
     auto *downloadBtn = new QPushButton(tr("&Download"), leftContainer);
@@ -292,7 +293,8 @@ QWidget *MainWindow::buildMainView() {
     serverForm->addRow(tr("Max Conn:"), m_serverMaxSpin);
 
     m_serverSinglePortCheck = new QCheckBox(tr("Single-Port Mode"), leftContainer);
-    m_serverSinglePortCheck->setToolTip(tr("Handle all traffic on the main listening port (single port multiplexing) instead of allocating temporary ports."));
+    m_serverSinglePortCheck->setToolTip(
+        tr("Handle all traffic on the main listening port (single port multiplexing) instead of allocating temporary ports."));
     serverForm->addRow(QString(), m_serverSinglePortCheck);
 
     m_serverJsonLoggingCheck = new QCheckBox(tr("JSON Logging"), leftContainer);
@@ -301,7 +303,8 @@ QWidget *MainWindow::buildMainView() {
 
     m_serverAllowedExtsEdit = new QLineEdit(leftContainer);
     m_serverAllowedExtsEdit->setPlaceholderText(tr("e.g. txt,bin (empty = all)"));
-    m_serverAllowedExtsEdit->setToolTip(tr("Comma-separated file extensions that clients are allowed to request (e.g. txt,pdf). Leave empty for all."));
+    m_serverAllowedExtsEdit->setToolTip(
+        tr("Comma-separated file extensions that clients are allowed to request (e.g. txt,pdf). Leave empty for all."));
     serverForm->addRow(tr("Whitelist:"), m_serverAllowedExtsEdit);
 
     m_serverBlockedExtsEdit = new QLineEdit(leftContainer);
@@ -325,7 +328,8 @@ QWidget *MainWindow::buildMainView() {
     m_serverSessionLimitSpin->setRange(0, 1000000);
     m_serverSessionLimitSpin->setSuffix(tr(" KB/s"));
     m_serverSessionLimitSpin->setSpecialValueText(tr("Unlimited"));
-    m_serverSessionLimitSpin->setToolTip(tr("The maximum individual bandwidth limit for each separate transfer session (KB/s). 0 is unlimited."));
+    m_serverSessionLimitSpin->setToolTip(
+        tr("The maximum individual bandwidth limit for each separate transfer session (KB/s). 0 is unlimited."));
     serverForm->addRow(tr("Session Limit:"), m_serverSessionLimitSpin);
 
     connect(m_serverPortSpin, &QSpinBox::valueChanged, this, &MainWindow::applyServerConfig);
@@ -343,7 +347,7 @@ QWidget *MainWindow::buildMainView() {
     leftLayout->addWidget(m_configStack, 1);
 
     scrollArea->setWidget(leftContainer);
-    mainLayout->addWidget(scrollArea, 30); // Left sidebar width percentage
+    mainLayout->addWidget(scrollArea, 30);  // Left sidebar width percentage
 
     // Right Column: Live Dashboard (Stats card row + Speed Chart) + Active Transfers List + Activity Log
     auto *rightContainer = new QWidget(central);
@@ -427,14 +431,12 @@ QWidget *MainWindow::buildMainView() {
     m_log->setMinimumHeight(100);
     logLayout->addWidget(m_log, 1);
 
-    connect(copyBtn, &QPushButton::clicked, this, [this]() {
-        QApplication::clipboard()->setText(m_log->toPlainText());
-    });
+    connect(copyBtn, &QPushButton::clicked, this, [this]() { QApplication::clipboard()->setText(m_log->toPlainText()); });
     connect(clearLogBtn, &QPushButton::clicked, m_log, &QPlainTextEdit::clear);
 
     rightLayout->addWidget(logGroup, 1);
 
-    mainLayout->addWidget(rightContainer, 70); // Right columns take remaining space
+    mainLayout->addWidget(rightContainer, 70);  // Right columns take remaining space
 
     return central;
 }

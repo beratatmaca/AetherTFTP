@@ -11,7 +11,11 @@
 #include <QProcess>
 #include <QStandardPaths>
 #include <QTimer>
+#ifdef Q_OS_WIN
+#include <io.h>
+#else
 #include <unistd.h>
+#endif
 
 #include "core/tftp_client.h"
 #include "core/tftp_protocol.h"
@@ -831,8 +835,13 @@ void TFTPProtocolTest::testCliRunnerPiping() {
     // Redirect stdout to a temporary file
     QTemporaryFile tempOut;
     QVERIFY(tempOut.open());
+#ifdef Q_OS_WIN
+    int oldStdout = _dup(1);
+    _dup2(tempOut.handle(), 1);
+#else
     int oldStdout = dup(1);
     dup2(tempOut.handle(), 1);
+#endif
 
     TftpClient client;
     QSignalSpy spy(&client, &TftpClient::transferFinished);
@@ -842,8 +851,13 @@ void TFTPProtocolTest::testCliRunnerPiping() {
 
     // Restore stdout and message handler
     fflush(stdout);
+#ifdef Q_OS_WIN
+    _dup2(oldStdout, 1);
+    _close(oldStdout);
+#else
     dup2(oldStdout, 1);
     ::close(oldStdout);
+#endif
     qInstallMessageHandler(oldHandler);
 
     tempOut.seek(0);
