@@ -11,6 +11,20 @@ AetherTFTP is a modern, lightweight, open-source cross-platform TFTP (Trivial Fi
 
 Written in C++17 and utilizing the Qt 6 framework, it is designed for speed, reliability, and high-block-size network throughput while providing both a headless Command Line Interface (CLI) and an intuitive Graphical User Interface (GUI).
 
+## 🚀 Features
+
+* ⚡ **Fast client and server.**
+* 💻 **Runs on Windows, Linux, macOS.**
+* 🔌 **Supports both GUI and CLI.**
+* 📈 **Uses high block size throughput.**
+* 📥 **Queues multiple client transfers.**
+* 📥 **Provides system tray integration.**
+* 🗺️ **Supports virtual directory mapping.**
+* 🛡️ **Filters traffic by IP subnets.**
+* 🔒 **Encrypts transfers with symmetric keys.**
+* 🔍 **Includes detailed log search filters.**
+* ⚙️ **Offers automatic server startup.**
+
 ## Installation
 
 AetherTFTP is available for multiple platforms. You can install it using one of the following methods:
