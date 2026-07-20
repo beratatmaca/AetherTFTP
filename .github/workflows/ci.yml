@@ -147,60 +147,35 @@ jobs:
             ./build/tftp_test testWindowSizeNegotiation
           done
 
-  # ─── Windows cross-compile (MXE) ──────────────────────────────────────────
-  windows-cross:
-    name: Windows Cross-Compile
+  # ─── Windows Native Build ──────────────────────────────────────────────────
+  windows-build:
+    name: Windows Build
     needs: format
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Install Qt 6 SDK
+        uses: jurplel/install-qt-action@v3
         with:
-          submodules: recursive
+          version: "6.6.3"
+          cache: true
 
-      - name: Install MXE dependencies
+      - name: Configure (Windows)
+        shell: pwsh
         run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            autoconf automake autopoint bash bison bzip2 flex g++ g++-multilib \
-            gettext git gperf intltool libc6-dev-i386 libgdk-pixbuf2.0-dev \
-            libltdl-dev libssl-dev libtool-bin libxml-parser-perl lzip \
-            make openssl p7zip-full patch perl python3 ruby sed unzip wget \
-            xz-utils
+          cmake -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DAETHER_USE_SYSTEMD=OFF
 
-      - name: Cache MXE
-        id: cache-mxe
-        uses: actions/cache@v4
-        with:
-          path: /opt/mxe
-          key: mxe-qt6-x86_64-${{ hashFiles('.github/workflows/ci.yml') }}
-
-      - name: Build MXE + Qt6 (first run only, ~60 min)
+      - name: Compile (Windows)
+        shell: pwsh
         run: |
-          if [ ! -f /opt/mxe/usr/x86_64-w64-mingw32.static/share/cmake/mxe-conf.cmake ]; then
-            rm -rf /opt/mxe
-            git clone --depth 1 https://github.com/mxe/mxe.git /opt/mxe
-            cd /opt/mxe
-            make -j$(nproc) MXE_TARGETS="x86_64-w64-mingw32.static" \
-                 qt6-qtbase JOBS=$(nproc) \
-                 MXE_USE_CCACHE='' 2>&1 | tail -50
-          fi
-
-      - name: Configure (Windows target)
-        run: |
-          cmake -G "Unix Makefiles" -B build-win \
-            -DCMAKE_TOOLCHAIN_FILE=/opt/mxe/usr/x86_64-w64-mingw32.static/share/cmake/mxe-conf.cmake \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DBUILD_TESTING=OFF \
-            -DAETHER_USE_SYSTEMD=OFF
-
-      - name: Cross-compile
-        run: cmake --build build-win -j$(nproc)
+          cmake --build build --config Release
 
       - name: Upload Windows binary
         uses: actions/upload-artifact@v4
         with:
           name: aethertftp-windows-x86_64
-          path: build-win/aethertftp.exe
+          path: build/Release/aethertftp.exe
           retention-days: 14
 
   # ─── Coverage ─────────────────────────────────────────────────────────────
