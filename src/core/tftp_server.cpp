@@ -1,5 +1,6 @@
 #include "core/tftp_server.h"
 
+#include "core/embedded_web_server.h"
 #include "core/metrics_exporter.h"
 #include "core/pxe_proxy_dhcp.h"
 #include "core/qlog.h"
@@ -71,6 +72,13 @@ bool TftpServer::listen(const QHostAddress &address, quint16 port, const QString
         m_proxyDhcpServer->listen(67);
     }
 
+    if (m_webDashboardEnabled) {
+        if (!m_webServer) {
+            m_webServer = new EmbeddedWebServer(this, this);
+        }
+        m_webServer->listen(address.isEqual(QHostAddress::AnyIPv6) ? QHostAddress::Any : address, m_webDashboardPort);
+    }
+
     logEvent(QStringLiteral("server_start"), QStringLiteral("server"), address.toString(), QString(), 0, QStringLiteral("success"),
              QStringLiteral("Listening on %1:%2, serving %3").arg(address.toString()).arg(m_socket->localPort()).arg(m_rootDir));
     return true;
@@ -78,6 +86,10 @@ bool TftpServer::listen(const QHostAddress &address, quint16 port, const QString
 
 void TftpServer::close() {
     stopMetricsServer();
+
+    if (m_webServer) {
+        m_webServer->close();
+    }
 
     if (m_proxyDhcpServer) {
         m_proxyDhcpServer->close();

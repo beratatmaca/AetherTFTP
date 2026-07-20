@@ -328,6 +328,17 @@ QWidget *MainWindow::buildMainView() {
     m_serverProxyDhcpBootFileEdit->setToolTip(tr("PXE boot file name offered to PXE clients (e.g. bootx64.efi, pxelinux.0)."));
     serverForm->addRow(tr("PXE Bootfile:"), m_serverProxyDhcpBootFileEdit);
 
+    m_serverWebDashboardCheck = new QCheckBox(tr("Enable Embedded Web Dashboard"), leftContainer);
+    m_serverWebDashboardCheck->setToolTip(
+        tr("Enable embedded HTTP server serving a browser-accessible web monitoring dashboard & REST API."));
+    serverForm->addRow(QString(), m_serverWebDashboardCheck);
+
+    m_serverWebDashboardPortSpin = new QSpinBox(leftContainer);
+    m_serverWebDashboardPortSpin->setRange(1, 65535);
+    m_serverWebDashboardPortSpin->setValue(8080);
+    m_serverWebDashboardPortSpin->setToolTip(tr("HTTP listening port for the embedded web dashboard (default 8080)."));
+    serverForm->addRow(tr("Web Port:"), m_serverWebDashboardPortSpin);
+
     m_serverAllowedExtsEdit = new QLineEdit(leftContainer);
     m_serverAllowedExtsEdit->setPlaceholderText(tr("e.g. txt,bin (empty = all)"));
     m_serverAllowedExtsEdit->setToolTip(
@@ -390,6 +401,8 @@ QWidget *MainWindow::buildMainView() {
     connect(m_serverAutoStartCheck, &QCheckBox::toggled, this, &MainWindow::applyServerConfig);
     connect(m_serverProxyDhcpCheck, &QCheckBox::toggled, this, &MainWindow::applyServerConfig);
     connect(m_serverProxyDhcpBootFileEdit, &QLineEdit::textChanged, this, &MainWindow::applyServerConfig);
+    connect(m_serverWebDashboardCheck, &QCheckBox::toggled, this, &MainWindow::applyServerConfig);
+    connect(m_serverWebDashboardPortSpin, &QSpinBox::valueChanged, this, &MainWindow::applyServerConfig);
     connect(m_serverAllowedExtsEdit, &QLineEdit::textChanged, this, &MainWindow::applyServerConfig);
     connect(m_serverBlockedExtsEdit, &QLineEdit::textChanged, this, &MainWindow::applyServerConfig);
     connect(m_serverIpWhitelistEdit, &QLineEdit::textChanged, this, &MainWindow::applyServerConfig);
@@ -698,6 +711,8 @@ void MainWindow::applyServerConfig() {
     m_serverProxyDhcp = m_serverProxyDhcpCheck ? m_serverProxyDhcpCheck->isChecked() : false;
     m_serverProxyDhcpBootFile =
         m_serverProxyDhcpBootFileEdit ? m_serverProxyDhcpBootFileEdit->text().trimmed() : QStringLiteral("bootx64.efi");
+    m_serverWebDashboardEnabled = m_serverWebDashboardCheck ? m_serverWebDashboardCheck->isChecked() : false;
+    m_serverWebDashboardPort = m_serverWebDashboardPortSpin ? quint16(m_serverWebDashboardPortSpin->value()) : 8080;
 
     m_serverAllowedExts.clear();
     for (const QString &item : m_serverAllowedExtsEdit->text().split(QLatin1Char(','), Qt::SkipEmptyParts)) {
@@ -741,6 +756,8 @@ void MainWindow::applyServerConfig() {
         m_server->setJsonLoggingEnabled(m_serverJsonLogging);
         m_server->setProxyDhcpEnabled(m_serverProxyDhcp);
         m_server->setProxyDhcpBootFile(m_serverProxyDhcpBootFile.isEmpty() ? QStringLiteral("bootx64.efi") : m_serverProxyDhcpBootFile);
+        m_server->setWebDashboardEnabled(m_serverWebDashboardEnabled);
+        m_server->setWebDashboardPort(m_serverWebDashboardPort);
         m_server->setAllowedExtensions(m_serverAllowedExts);
         m_server->setBlockedExtensions(m_serverBlockedExts);
         m_server->setWhitelist(m_serverIpWhitelist);
@@ -1042,6 +1059,8 @@ void MainWindow::loadSettings() {
     m_serverAutoStart = settings.value(QStringLiteral("server/autoStart"), false).toBool();
     m_serverProxyDhcp = settings.value(QStringLiteral("server/proxyDhcp"), false).toBool();
     m_serverProxyDhcpBootFile = settings.value(QStringLiteral("server/proxyBootFile"), QStringLiteral("bootx64.efi")).toString();
+    m_serverWebDashboardEnabled = settings.value(QStringLiteral("server/webDashboardEnabled"), false).toBool();
+    m_serverWebDashboardPort = quint16(settings.value(QStringLiteral("server/webDashboardPort"), 8080).toUInt());
     m_pskKey = settings.value(QStringLiteral("client/pskKey")).toString();
     m_serverPskKey = settings.value(QStringLiteral("server/pskKey")).toString();
 
@@ -1054,6 +1073,8 @@ void MainWindow::loadSettings() {
         QSignalBlocker b14(m_serverAutoStartCheck);
         QSignalBlocker b17(m_serverProxyDhcpCheck);
         QSignalBlocker b18(m_serverProxyDhcpBootFileEdit);
+        QSignalBlocker b19(m_serverWebDashboardCheck);
+        QSignalBlocker b20(m_serverWebDashboardPortSpin);
         QSignalBlocker b6(m_serverAllowedExtsEdit);
         QSignalBlocker b7(m_serverBlockedExtsEdit);
         QSignalBlocker b11(m_serverIpWhitelistEdit);
@@ -1075,6 +1096,10 @@ void MainWindow::loadSettings() {
             m_serverProxyDhcpCheck->setChecked(m_serverProxyDhcp);
         if (m_serverProxyDhcpBootFileEdit)
             m_serverProxyDhcpBootFileEdit->setText(m_serverProxyDhcpBootFile);
+        if (m_serverWebDashboardCheck)
+            m_serverWebDashboardCheck->setChecked(m_serverWebDashboardEnabled);
+        if (m_serverWebDashboardPortSpin)
+            m_serverWebDashboardPortSpin->setValue(m_serverWebDashboardPort);
         m_serverAllowedExtsEdit->setText(m_serverAllowedExts.join(QLatin1Char(',')));
         m_serverBlockedExtsEdit->setText(m_serverBlockedExts.join(QLatin1Char(',')));
         m_serverIpWhitelistEdit->setText(m_serverIpWhitelist.join(QLatin1Char(',')));
@@ -1134,6 +1159,8 @@ void MainWindow::saveSettings() {
     settings.setValue(QStringLiteral("server/autoStart"), m_serverAutoStart);
     settings.setValue(QStringLiteral("server/proxyDhcp"), m_serverProxyDhcp);
     settings.setValue(QStringLiteral("server/proxyBootFile"), m_serverProxyDhcpBootFile);
+    settings.setValue(QStringLiteral("server/webDashboardEnabled"), m_serverWebDashboardEnabled);
+    settings.setValue(QStringLiteral("server/webDashboardPort"), m_serverWebDashboardPort);
     settings.setValue(QStringLiteral("server/allowedExts"), m_serverAllowedExts);
     settings.setValue(QStringLiteral("server/blockedExts"), m_serverBlockedExts);
     settings.setValue(QStringLiteral("server/ipWhitelist"), m_serverIpWhitelist);
@@ -1336,6 +1363,10 @@ void MainWindow::onServerProfileChanged(int index) {
         if (m_serverProxyDhcpBootFileEdit)
             m_serverProxyDhcpBootFileEdit->setText(
                 settings.value(QStringLiteral("server/proxyBootFile"), QStringLiteral("bootx64.efi")).toString());
+        if (m_serverWebDashboardCheck)
+            m_serverWebDashboardCheck->setChecked(settings.value(QStringLiteral("server/webDashboardEnabled"), false).toBool());
+        if (m_serverWebDashboardPortSpin)
+            m_serverWebDashboardPortSpin->setValue(settings.value(QStringLiteral("server/webDashboardPort"), 8080).toInt());
         m_serverAllowedExtsEdit->setText(settings.value(QStringLiteral("server/allowedExts")).toStringList().join(QLatin1Char(',')));
         m_serverBlockedExtsEdit->setText(settings.value(QStringLiteral("server/blockedExts")).toStringList().join(QLatin1Char(',')));
         m_serverIpWhitelistEdit->setText(settings.value(QStringLiteral("server/ipWhitelist")).toStringList().join(QLatin1Char(',')));
@@ -1369,6 +1400,10 @@ void MainWindow::onServerProfileChanged(int index) {
         m_serverProxyDhcpCheck->setChecked(settings.value(QStringLiteral("proxyDhcp"), false).toBool());
     if (m_serverProxyDhcpBootFileEdit)
         m_serverProxyDhcpBootFileEdit->setText(settings.value(QStringLiteral("proxyBootFile"), QStringLiteral("bootx64.efi")).toString());
+    if (m_serverWebDashboardCheck)
+        m_serverWebDashboardCheck->setChecked(settings.value(QStringLiteral("webDashboardEnabled"), false).toBool());
+    if (m_serverWebDashboardPortSpin)
+        m_serverWebDashboardPortSpin->setValue(settings.value(QStringLiteral("webDashboardPort"), 8080).toInt());
     m_serverAllowedExtsEdit->setText(settings.value(QStringLiteral("allowedExts")).toStringList().join(QLatin1Char(',')));
     m_serverBlockedExtsEdit->setText(settings.value(QStringLiteral("blockedExts")).toStringList().join(QLatin1Char(',')));
     m_serverIpWhitelistEdit->setText(settings.value(QStringLiteral("ipWhitelist")).toStringList().join(QLatin1Char(',')));
@@ -1408,6 +1443,8 @@ void MainWindow::saveCurrentServerProfile() {
     settings.setValue(QStringLiteral("proxyDhcp"), m_serverProxyDhcpCheck ? m_serverProxyDhcpCheck->isChecked() : false);
     settings.setValue(QStringLiteral("proxyBootFile"),
                       m_serverProxyDhcpBootFileEdit ? m_serverProxyDhcpBootFileEdit->text() : QStringLiteral("bootx64.efi"));
+    settings.setValue(QStringLiteral("webDashboardEnabled"), m_serverWebDashboardCheck ? m_serverWebDashboardCheck->isChecked() : false);
+    settings.setValue(QStringLiteral("webDashboardPort"), m_serverWebDashboardPortSpin ? m_serverWebDashboardPortSpin->value() : 8080);
     settings.setValue(QStringLiteral("allowedExts"), m_serverAllowedExtsEdit->text().split(QLatin1Char(','), Qt::SkipEmptyParts));
     settings.setValue(QStringLiteral("blockedExts"), m_serverBlockedExtsEdit->text().split(QLatin1Char(','), Qt::SkipEmptyParts));
     settings.setValue(QStringLiteral("ipWhitelist"), m_serverIpWhitelistEdit->text().split(QLatin1Char(','), Qt::SkipEmptyParts));
@@ -1621,6 +1658,8 @@ void MainWindow::importServerProfile() {
     settings.setValue(QStringLiteral("proxyDhcp"), server.value(QStringLiteral("proxyDhcp")).toBool(false));
     settings.setValue(QStringLiteral("proxyBootFile"),
                       server.value(QStringLiteral("proxyBootFile")).toString(QStringLiteral("bootx64.efi")));
+    settings.setValue(QStringLiteral("webDashboardEnabled"), server.value(QStringLiteral("webDashboardEnabled")).toBool(false));
+    settings.setValue(QStringLiteral("webDashboardPort"), server.value(QStringLiteral("webDashboardPort")).toInt(8080));
     settings.setValue(QStringLiteral("pskKey"), server.value(QStringLiteral("pskKey")).toString());
     settings.endGroup();
     settings.endGroup();
@@ -1659,6 +1698,8 @@ void MainWindow::exportServerProfile() {
     server.insert(QStringLiteral("proxyDhcp"), settings.value(QStringLiteral("proxyDhcp"), false).toBool());
     server.insert(QStringLiteral("proxyBootFile"),
                   settings.value(QStringLiteral("proxyBootFile"), QStringLiteral("bootx64.efi")).toString());
+    server.insert(QStringLiteral("webDashboardEnabled"), settings.value(QStringLiteral("webDashboardEnabled"), false).toBool());
+    server.insert(QStringLiteral("webDashboardPort"), settings.value(QStringLiteral("webDashboardPort"), 8080).toInt());
 
     QJsonArray allowedArray;
     for (const auto &val : settings.value(QStringLiteral("allowedExts")).toStringList())

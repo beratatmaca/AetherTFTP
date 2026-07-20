@@ -15,6 +15,7 @@ namespace tftp {
 class TftpSession;
 class MetricsExporter;
 class PxeProxyDhcp;
+class EmbeddedWebServer;
 
 /**
  * @brief TFTP listener that dispatches each request to its own session.
@@ -209,6 +210,19 @@ public:
     /** @return Pointer to internal PxeProxyDhcp instance. */
     PxeProxyDhcp *proxyDhcpServer() const { return m_proxyDhcpServer; }
 
+    /** @brief Enable/disable embedded Web Dashboard server. */
+    void setWebDashboardEnabled(bool enable) { m_webDashboardEnabled = enable; }
+    /** @return @c true if Web Dashboard is enabled. */
+    bool isWebDashboardEnabled() const { return m_webDashboardEnabled; }
+
+    /** @brief Set Web Dashboard HTTP listening port (default 8080). */
+    void setWebDashboardPort(quint16 port) { m_webDashboardPort = port; }
+    /** @return Web Dashboard HTTP port. */
+    quint16 webDashboardPort() const { return m_webDashboardPort; }
+
+    /** @return Pointer to internal EmbeddedWebServer instance. */
+    EmbeddedWebServer *webDashboardServer() const { return m_webServer; }
+
 signals:
     /**
      * @brief Emitted when a new transfer is accepted.
@@ -296,6 +310,11 @@ private:
     PxeProxyDhcp *m_proxyDhcpServer = nullptr;
     bool m_proxyDhcpEnabled = false;
     QString m_proxyDhcpBootFile = QStringLiteral("bootx64.efi");
+
+    // Embedded Web Server
+    EmbeddedWebServer *m_webServer = nullptr;
+    bool m_webDashboardEnabled = false;
+    quint16 m_webDashboardPort = 8080;
 
 private slots:
     void onWatchdogTimeout();

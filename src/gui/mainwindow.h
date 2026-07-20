@@ -123,6 +123,8 @@ private:
     bool m_serverAutoStart = false;
     bool m_serverProxyDhcp = false;
     QString m_serverProxyDhcpBootFile = QStringLiteral("bootx64.efi");
+    bool m_serverWebDashboardEnabled = false;
+    quint16 m_serverWebDashboardPort = 8080;
 
     // Server controls.
     QComboBox *m_serverProfileCombo = nullptr;
@@ -136,6 +138,8 @@ private:
     QCheckBox *m_serverAutoStartCheck = nullptr;
     QCheckBox *m_serverProxyDhcpCheck = nullptr;
     QLineEdit *m_serverProxyDhcpBootFileEdit = nullptr;
+    QCheckBox *m_serverWebDashboardCheck = nullptr;
+    QSpinBox *m_serverWebDashboardPortSpin = nullptr;
     QLineEdit *m_serverAllowedExtsEdit = nullptr;
     QLineEdit *m_serverBlockedExtsEdit = nullptr;
     QLineEdit *m_serverIpWhitelistEdit = nullptr;

@@ -115,6 +115,8 @@ add_library(aether_core STATIC
     src/core/tftp_server.h
     src/core/pxe_proxy_dhcp.cpp
     src/core/pxe_proxy_dhcp.h
+    src/core/embedded_web_server.cpp
+    src/core/embedded_web_server.h
     src/core/metrics_exporter.cpp
     src/core/metrics_exporter.h
     src/core/tftp_client.cpp

@@ -72,6 +72,8 @@ int CliRunner::run(QCoreApplication &app, const QStringList &args) {
         {QStringLiteral("proxy-dhcp"), QStringLiteral("Enable ProxyDHCP server for PXE boot options on UDP port 67.")},
         {QStringLiteral("proxy-bootfile"), QStringLiteral("PXE boot file name for ProxyDHCP (default bootx64.efi)."),
          QStringLiteral("file")},
+        {QStringLiteral("web-dashboard"), QStringLiteral("Enable embedded HTTP web dashboard for monitoring server transfers.")},
+        {QStringLiteral("web-port"), QStringLiteral("HTTP port for web dashboard (default 8080)."), QStringLiteral("port")},
     });
 
     QStringList argsToParse = args;
@@ -150,6 +152,13 @@ int CliRunner::runServer(QCommandLineParser &parser, quint16 port) {
 
     if (parser.isSet(QStringLiteral("proxy-bootfile"))) {
         server.setProxyDhcpBootFile(parser.value(QStringLiteral("proxy-bootfile")));
+    }
+
+    if (parser.isSet(QStringLiteral("web-dashboard"))) {
+        server.setWebDashboardEnabled(true);
+        if (parser.isSet(QStringLiteral("web-port"))) {
+            server.setWebDashboardPort(quint16(parser.value(QStringLiteral("web-port")).toUInt()));
+        }
     }
 
     if (!server.listen(QHostAddress(bindAddr), port, dir)) {

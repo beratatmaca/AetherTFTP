@@ -25,6 +25,7 @@ Written in C++17 and utilizing the Qt 6 framework, it is designed for speed, rel
 * 🔍 **Includes detailed log search filters.**
 * ⚙️ **Offers automatic server startup.**
 * 🌐 **Includes ProxyDHCP helper for PXE network booting.**
+* 🖥️ **Features an embedded HTML/JS HTTP web dashboard & REST API for remote browser monitoring.**
 
 ## Installation
 
@@ -179,6 +180,14 @@ Spawn a TFTP server with an integrated ProxyDHCP helper listening on UDP port 67
 
 ```bash
 ./build/aethertftp --server --port 69 --dir /var/tftpboot --proxy-dhcp --proxy-bootfile bootx64.efi
+```
+
+### Embedded Web Dashboard Mode
+
+Launch a TFTP server with an embedded HTTP server hosting a browser-accessible monitoring web dashboard (and `/api/status`, `/metrics` endpoints) on port 8080:
+
+```bash
+./build/aethertftp --server --dir /var/tftp --web-dashboard --web-port 8080
 ```
 
 ### Client File Download (Get)

@@ -79,6 +79,7 @@ private slots:
     void testTransferAbort();
     void testAgainstTftpHpa();
     void testProxyDhcp();
+    void testEmbeddedWebDashboard();
 
 private:
     QByteArray makePayload(int size, char seed) const;
@@ -1360,6 +1361,41 @@ void TFTPProtocolTest::testProxyDhcp() {
     server.setProxyDhcpBootFile("ipxe.efi");
     QVERIFY(server.isProxyDhcpEnabled());
     QCOMPARE(server.proxyDhcpBootFile(), QStringLiteral("ipxe.efi"));
+}
+
+void TFTPProtocolTest::testEmbeddedWebDashboard() {
+    QTemporaryDir dir;
+    TftpServer server;
+    server.setWebDashboardEnabled(true);
+    server.setWebDashboardPort(18080);
+    QVERIFY(server.listen(QHostAddress::LocalHost, 12356, dir.path()));
+    QVERIFY(server.isWebDashboardEnabled());
+    QCOMPARE(server.webDashboardPort(), static_cast<quint16>(18080));
+
+    // Test GET /
+    QTcpSocket client;
+    client.connectToHost(QHostAddress::LocalHost, 18080);
+    QVERIFY(client.waitForConnected(3000));
+    QSignalSpy spyHtml(&client, &QTcpSocket::readyRead);
+    client.write("GET / HTTP/1.1\r\nHost: localhost\r\n\r\n");
+    QVERIFY(spyHtml.wait(3000));
+    QByteArray resHtml = client.readAll();
+    QVERIFY(resHtml.contains("200 OK"));
+    QVERIFY(resHtml.contains("AetherTFTP"));
+
+    // Test GET /api/status
+    QTcpSocket clientApi;
+    clientApi.connectToHost(QHostAddress::LocalHost, 18080);
+    QVERIFY(clientApi.waitForConnected(3000));
+    QSignalSpy spyApi(&clientApi, &QTcpSocket::readyRead);
+    clientApi.write("GET /api/status HTTP/1.1\r\nHost: localhost\r\n\r\n");
+    QVERIFY(spyApi.wait(3000));
+    QByteArray resApi = clientApi.readAll();
+    QVERIFY(resApi.contains("200 OK"));
+    QVERIFY(resApi.contains("isListening"));
+    QVERIFY(resApi.contains("true"));
+
+    server.close();
 }
 
 QTEST_MAIN(TFTPProtocolTest)
