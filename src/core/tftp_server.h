@@ -218,7 +218,7 @@ public:
     /** @brief Set Web Dashboard HTTP listening port (default 8080). */
     void setWebDashboardPort(quint16 port) { m_webDashboardPort = port; }
     /** @return Web Dashboard HTTP port. */
-    quint16 webDashboardPort() const { return m_webDashboardPort; }
+    quint16 webDashboardPort() const;
 
     /** @return Pointer to internal EmbeddedWebServer instance. */
     EmbeddedWebServer *webDashboardServer() const { return m_webServer; }

@@ -82,6 +82,7 @@ void EmbeddedWebServer::handleRequest(QTcpSocket *socket, const QString &method,
             if (m_tftpServer) {
                 root.insert(QStringLiteral("isListening"), m_tftpServer->isListening());
                 root.insert(QStringLiteral("port"), m_tftpServer->port());
+                root.insert(QStringLiteral("webDashboardPort"), port());
                 root.insert(QStringLiteral("rootDir"), m_tftpServer->rootDir());
                 root.insert(QStringLiteral("activeSessions"), m_tftpServer->activeSessions());
                 root.insert(QStringLiteral("totalBytesTransferred"), m_tftpServer->totalBytesTransferred());
@@ -92,6 +93,7 @@ void EmbeddedWebServer::handleRequest(QTcpSocket *socket, const QString &method,
                 root.insert(QStringLiteral("proxyBootFile"), m_tftpServer->proxyDhcpBootFile());
             } else {
                 root.insert(QStringLiteral("isListening"), false);
+                root.insert(QStringLiteral("webDashboardPort"), port());
             }
             sendResponse(socket, 200, QStringLiteral("OK"), QStringLiteral("application/json"), QJsonDocument(root).toJson());
             return;
@@ -235,6 +237,10 @@ QByteArray EmbeddedWebServer::getEmbeddedHtmlPage() {
                 <span class="mono" id="valPort">69</span>
             </div>
             <div class="info-row">
+                <span class="text-muted">Web Dashboard Port:</span>
+                <span class="mono" id="valWebPort">8080</span>
+            </div>
+            <div class="info-row">
                 <span class="text-muted">Root Directory:</span>
                 <span class="mono" id="valDir">/var/tftp</span>
             </div>
@@ -265,6 +271,7 @@ QByteArray EmbeddedWebServer::getEmbeddedHtmlPage() {
                     document.getElementById('valSuccess').innerText = data.transfersSuccess + ' ok / ' + data.transfersFailure + ' err';
                     document.getElementById('valRetrans').innerText = data.retransmissions;
                     document.getElementById('valPort').innerText = data.port;
+                    document.getElementById('valWebPort').innerText = data.webDashboardPort || window.location.port || '8080';
                     document.getElementById('valDir').innerText = data.rootDir || 'N/A';
                     document.getElementById('valPxe').innerText = data.proxyDhcpEnabled ? ('Enabled (' + data.proxyBootFile + ')') : 'Disabled';
                 } else {

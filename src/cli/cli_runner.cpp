@@ -154,10 +154,20 @@ int CliRunner::runServer(QCommandLineParser &parser, quint16 port) {
         server.setProxyDhcpBootFile(parser.value(QStringLiteral("proxy-bootfile")));
     }
 
-    if (parser.isSet(QStringLiteral("web-dashboard"))) {
+    if (parser.isSet(QStringLiteral("web-dashboard")) || parser.isSet(QStringLiteral("web-port"))) {
         server.setWebDashboardEnabled(true);
         if (parser.isSet(QStringLiteral("web-port"))) {
-            server.setWebDashboardPort(quint16(parser.value(QStringLiteral("web-port")).toUInt()));
+            bool ok = false;
+            quint16 p = quint16(parser.value(QStringLiteral("web-port")).toUInt(&ok));
+            if (ok && p > 0) {
+                server.setWebDashboardPort(p);
+            }
+        } else if (parser.isSet(QStringLiteral("web-dashboard")) && !parser.value(QStringLiteral("web-dashboard")).isEmpty()) {
+            bool ok = false;
+            quint16 p = quint16(parser.value(QStringLiteral("web-dashboard")).toUInt(&ok));
+            if (ok && p > 0) {
+                server.setWebDashboardPort(p);
+            }
         }
     }
 

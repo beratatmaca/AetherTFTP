@@ -121,6 +121,13 @@ quint16 TftpServer::port() const {
     return m_socket ? m_socket->localPort() : 0;
 }
 
+quint16 TftpServer::webDashboardPort() const {
+    if (m_webServer && m_webServer->isListening()) {
+        return m_webServer->port();
+    }
+    return m_webDashboardPort;
+}
+
 void TftpServer::setWhitelist(const QList<QString> &cidrs) {
     m_whitelist.clear();
     for (const QString &cidr : cidrs) {

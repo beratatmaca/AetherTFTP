@@ -1394,8 +1394,17 @@ void TFTPProtocolTest::testEmbeddedWebDashboard() {
     QVERIFY(resApi.contains("200 OK"));
     QVERIFY(resApi.contains("isListening"));
     QVERIFY(resApi.contains("true"));
+    QVERIFY(resApi.contains("webDashboardPort"));
 
     server.close();
+
+    // Test custom parametric port
+    TftpServer serverParametric;
+    serverParametric.setWebDashboardEnabled(true);
+    serverParametric.setWebDashboardPort(18081);
+    QVERIFY(serverParametric.listen(QHostAddress::LocalHost, 12357, dir.path()));
+    QCOMPARE(serverParametric.webDashboardPort(), static_cast<quint16>(18081));
+    serverParametric.close();
 }
 
 QTEST_MAIN(TFTPProtocolTest)
