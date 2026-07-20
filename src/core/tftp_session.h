@@ -114,6 +114,7 @@ private:
 
     // RRQ (we send the file).
     void sendDataBlock(qint64 block);  ///< (Re)send DATA for @p block.
+    void fillWindow();                 ///< Fill the sliding window with read tasks.
     void handleAck(quint16 block);
 
     // WRQ (we receive the file).
@@ -159,6 +160,17 @@ private:
     QElapsedTimer m_sessionTokenTimer;
     QByteArray m_pendingSendPacket;
     bool m_pendingArmRetransmit = false;
+
+    // Sliding Window and Netascii Mode State
+    bool m_isNetascii = false;
+    QByteArray m_netasciiData;
+    int m_readTasksActive = 0;
+    QMap<qint64, QByteArray> m_readBuffer;
+    QMap<qint64, QByteArray> m_windowCache;
+    QMap<qint64, QByteArray> m_receiveBuffer;
+    bool m_writeActive = false;
+    qint64 m_lastAckedBlock = 0;
+    qint64 m_nextBlockToSend = 1;
 
     struct ReadTask;
     struct WriteTask;

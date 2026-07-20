@@ -65,6 +65,11 @@ public:
     /** @return The PSK Key. */
     QString pskKey() const { return m_pskKey; }
 
+    /** @brief Set the transfer mode ("octet" or "netascii"). */
+    void setMode(const QString &mode) { m_requestedMode = mode; }
+    /** @return The requested transfer mode. */
+    QString mode() const { return m_requestedMode; }
+
     /**
      * @brief Download @p remoteFile from @p host into @p localPath.
      * @param host Server host name or address.
@@ -135,6 +140,7 @@ private:
     // Upload path.
     void handleAck(quint16 block);
     void sendDataBlock(qint64 block);
+    void fillWindow();
 
     void armRetransmit();
     void fail(const QString &message);
@@ -169,6 +175,16 @@ private:
 
     qint64 m_bytesTransferred = 0;
     qint64 m_totalBytes = -1;
+
+    // Sliding Window and Netascii Mode State
+    QString m_requestedMode = QStringLiteral("octet");
+    bool m_isNetascii = false;
+    QByteArray m_netasciiData;
+    qint64 m_lastAckedBlock = 0;
+    qint64 m_nextBlockToSend = 1;
+    QMap<qint64, QByteArray> m_windowCache;
+    QMap<qint64, QByteArray> m_receiveBuffer;
+    bool m_lastBlockReceived = false;
 };
 
 }  // namespace tftp

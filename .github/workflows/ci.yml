@@ -9,7 +9,15 @@ on:
 permissions:
   contents: read
 
+# ---------------------------------------------------------------------------
+# Cancel any in-progress run for the same branch/PR so we don't waste minutes.
+# ---------------------------------------------------------------------------
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  # ─── Formatting ────────────────────────────────────────────────────────────
   format:
     name: Formatting
     runs-on: ubuntu-latest
@@ -22,6 +30,7 @@ jobs:
       - name: Check formatting
         run: cmake --build build --target format-check
 
+  # ─── Documentation ─────────────────────────────────────────────────────────
   docs:
     name: Documentation
     runs-on: ubuntu-latest
@@ -36,6 +45,7 @@ jobs:
       - name: Generate Documentation
         run: cmake --build build --target docs
 
+  # ─── Static Analysis ───────────────────────────────────────────────────────
   lint:
     name: Static Analysis
     needs: format
@@ -43,7 +53,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install tools
-        run: sudo apt-get update && sudo apt-get install -y cmake g++ qt6-base-dev clang-tidy
+        run: sudo apt-get update && sudo apt-get install -y cmake g++ qt6-base-dev clang-tidy libsystemd-dev
       - name: Configure
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=ON
       - name: Build
@@ -51,10 +61,19 @@ jobs:
       - name: Run clang-tidy
         run: cmake --build build --target tidy
 
+  # ─── Unit Tests (Linux, sanitizer matrix) ─────────────────────────────────
   unit-tests:
-    name: Unit Tests
+    name: Unit Tests (${{ matrix.sanitizer }})
     needs: format
     runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        sanitizer:
+          - none
+          - address+undefined
+          - thread
 
     steps:
       - uses: actions/checkout@v4
@@ -70,27 +89,119 @@ jobs:
       - name: Install Linux Build Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential libgl1-mesa-dev cmake g++ qt6-base-dev tftp-hpa
+          sudo apt-get install -y \
+            build-essential libgl1-mesa-dev cmake g++ \
+            qt6-base-dev tftp-hpa libsystemd-dev
 
       - name: Configure CMake
+        env:
+          SANITIZER: ${{ matrix.sanitizer }}
         run: |
+          EXTRA_FLAGS=""
+          if [ "$SANITIZER" != "none" ]; then
+            EXTRA_FLAGS="-DAETHER_SANITIZER=${SANITIZER}"
+          fi
           cmake -G "Unix Makefiles" -B build \
             -DCMAKE_BUILD_TYPE=Debug \
             -DBUILD_TESTING=ON \
-            -DAETHER_SANITIZER=address+undefined
+            $EXTRA_FLAGS
 
       - name: Compile Code
-        run: |
-          cmake --build build --config Debug -j$(nproc)
+        run: cmake --build build --config Debug -j$(nproc)
 
       - name: Run Unit Tests
         env:
           QT_QPA_PLATFORM: offscreen
+          # ASAN/LSAN — disable leak detection (false positives from Qt internals)
           ASAN_OPTIONS: detect_leaks=0:abort_on_error=1:strict_string_checks=1
           UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
-        run: |
-          ctest --test-dir build --output-on-failure -C Debug
+          # TSAN — suppress known Qt false positives
+          TSAN_OPTIONS: halt_on_error=1:second_deadlock_stack=1
+        run: ctest --test-dir build --output-on-failure -C Debug
 
+  # ─── Regression: window-size negotiation (dedicated slot) ─────────────────
+  regression-window:
+    name: Regression — window size negotiation
+    needs: unit-tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake g++ qt6-base-dev tftp-hpa libsystemd-dev
+      - name: Configure
+        run: |
+          cmake -G "Unix Makefiles" -B build \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DBUILD_TESTING=ON
+      - name: Build
+        run: cmake --build build -j$(nproc)
+      - name: Run window size regression test (10 iterations)
+        env:
+          QT_QPA_PLATFORM: offscreen
+        # Repeat 10× to expose any non-deterministic race conditions.
+        run: |
+          for i in $(seq 1 10); do
+            echo "=== Iteration $i ==="
+            ./build/tftp_test testWindowSizeNegotiation
+          done
+
+  # ─── Windows cross-compile (MXE) ──────────────────────────────────────────
+  windows-cross:
+    name: Windows Cross-Compile
+    needs: format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install MXE dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            autoconf automake autopoint bash bison bzip2 flex g++ g++-multilib \
+            gettext git gperf intltool libc6-dev-i386 libgdk-pixbuf2.0-dev \
+            libltdl-dev libssl-dev libtool-bin libxml-parser-perl lzip \
+            make openssl p7zip-full patch perl python3 ruby sed unzip wget \
+            xz-utils
+
+      - name: Cache MXE
+        id: cache-mxe
+        uses: actions/cache@v4
+        with:
+          path: /opt/mxe
+          key: mxe-qt6-x86_64-${{ hashFiles('.github/workflows/ci.yml') }}
+
+      - name: Build MXE + Qt6 (first run only, ~60 min)
+        if: steps.cache-mxe.outputs.cache-hit != 'true'
+        run: |
+          git clone --depth 1 https://github.com/mxe/mxe.git /opt/mxe
+          cd /opt/mxe
+          make -j$(nproc) MXE_TARGETS="x86_64-w64-mingw32.static" \
+               qt6-qtbase JOBS=$(nproc) \
+               MXE_USE_CCACHE='' 2>&1 | tail -50
+
+      - name: Configure (Windows target)
+        run: |
+          cmake -G "Unix Makefiles" -B build-win \
+            -DCMAKE_TOOLCHAIN_FILE=/opt/mxe/usr/x86_64-w64-mingw32.static/share/cmake/mxe-conf.cmake \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_TESTING=OFF \
+            -DAETHER_USE_SYSTEMD=OFF
+
+      - name: Cross-compile
+        run: cmake --build build-win -j$(nproc)
+
+      - name: Upload Windows binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: aethertftp-windows-x86_64
+          path: build-win/aethertftp.exe
+          retention-days: 14
+
+  # ─── Coverage ─────────────────────────────────────────────────────────────
   coverage:
     name: Coverage
     needs: format
@@ -98,7 +209,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install deps
-        run: sudo apt-get update && sudo apt-get install -y cmake g++ qt6-base-dev lcov tftp-hpa
+        run: sudo apt-get update && sudo apt-get install -y cmake g++ qt6-base-dev lcov tftp-hpa libsystemd-dev
       - name: Configure (coverage)
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DBUILD_COVERAGE=ON
       - name: Build

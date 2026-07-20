@@ -1,18 +1,21 @@
 #include "core/tftp_server.h"
 
+#include "core/metrics_exporter.h"
+#include "core/qlog.h"
 #include "core/tftp_protocol.h"
 #include "core/tftp_session.h"
-#include "core/metrics_exporter.h"
 
+#include <QDateTime>
+#include <QDebug>
 #include <QDir>
 #include <QFileInfo>
-#include <QUdpSocket>
 #include <QJsonDocument>
 #include <QJsonObject>
-#include <QDateTime>
-#include <QTextStream>
-#include <QDebug>
 #include <QRandomGenerator>
+#include <QStorageInfo>
+#include <QTextStream>
+#include <QTimer>
+#include <QUdpSocket>
 #include <algorithm>
 #include <cmath>
 
@@ -49,6 +52,14 @@ bool TftpServer::listen(const QHostAddress &address, quint16 port, const QString
 
     m_globalTimer.invalidate();
 
+#ifdef AETHER_HAVE_SYSTEMD
+    if (!m_watchdogTimer) {
+        m_watchdogTimer = new QTimer(this);
+        connect(m_watchdogTimer, &QTimer::timeout, this, &TftpServer::onWatchdogTimeout);
+    }
+    m_watchdogTimer->start(15000);
+#endif
+
     logEvent(QStringLiteral("server_start"), QStringLiteral("server"), address.toString(), QString(), 0, QStringLiteral("success"),
              QStringLiteral("Listening on %1:%2, serving %3").arg(address.toString()).arg(m_socket->localPort()).arg(m_rootDir));
     return true;
@@ -57,12 +68,22 @@ bool TftpServer::listen(const QHostAddress &address, quint16 port, const QString
 void TftpServer::close() {
     stopMetricsServer();
 
+#ifdef AETHER_HAVE_SYSTEMD
+    if (m_watchdogTimer) {
+        m_watchdogTimer->stop();
+    }
+#endif
+
     if (m_socket) {
         m_socket->close();
         m_socket->deleteLater();
         m_socket = nullptr;
     }
     m_sessions.clear();
+}
+
+void TftpServer::onWatchdogTimeout() {
+    tftp::notifyWatchdog();
 }
 
 bool TftpServer::isListening() const {
@@ -103,28 +124,68 @@ void TftpServer::setBlacklist(const QList<QString> &cidrs) {
     }
 }
 
+void TftpServer::addSubnetRule(const QString &cidr, AccessLevel level) {
+    QPair<QHostAddress, int> parsed = QHostAddress::parseSubnet(cidr);
+    if (parsed.first.isNull()) {
+        QHostAddress ip(cidr);
+        if (!ip.isNull()) {
+            m_subnetRules.append({ip, ip.protocol() == QAbstractSocket::IPv6Protocol ? 128 : 32, level});
+        }
+    } else {
+        m_subnetRules.append({parsed.first, parsed.second, level});
+    }
+}
+
+void TftpServer::clearSubnetRules() {
+    m_subnetRules.clear();
+}
+
 bool TftpServer::isAllowed(const QHostAddress &clientAddress, bool isUpload) const {
     if (isUpload && m_readOnly) {
         return false;
     }
 
-    for (const auto &rule : m_blacklist) {
+    int bestPrefix = -1;
+    AccessLevel level = m_defaultAccessLevel;
+    bool ruleFound = false;
+
+    for (const auto &rule : m_subnetRules) {
         if (rule.matches(clientAddress)) {
-            return false;
+            if (rule.prefixLength > bestPrefix) {
+                bestPrefix = rule.prefixLength;
+                level = rule.level;
+                ruleFound = true;
+            }
         }
     }
 
-    if (!m_whitelist.isEmpty()) {
-        bool match = false;
-        for (const auto &rule : m_whitelist) {
+    if (!ruleFound) {
+        for (const auto &rule : m_blacklist) {
             if (rule.matches(clientAddress)) {
-                match = true;
-                break;
+                return false;
             }
         }
-        if (!match) {
-            return false;
+
+        if (!m_whitelist.isEmpty()) {
+            bool match = false;
+            for (const auto &rule : m_whitelist) {
+                if (rule.matches(clientAddress)) {
+                    match = true;
+                    break;
+                }
+            }
+            if (!match) {
+                return false;
+            }
         }
+        return true;
+    }
+
+    if (level == AccessLevel::Blocked) {
+        return false;
+    }
+    if (level == AccessLevel::ReadOnly && isUpload) {
+        return false;
     }
 
     return true;
@@ -292,6 +353,54 @@ void TftpServer::onReadyRead() {
         const bool isUpload = (req.op == OpCode::WRQ);
         const QString clientIp = sender.toString();
 
+        // 1. IP Request Rate Limiting
+        if (m_maxRequestsPerSecond > 0.0) {
+            RateLimiterState &state = m_ipRateLimiters[clientIp];
+            if (!state.timer.isValid()) {
+                state.timer.start();
+                state.tokens = 5.0;
+            }
+            qint64 elapsed = state.timer.restart();
+            state.tokens += (elapsed / 1000.0) * m_maxRequestsPerSecond;
+            if (state.tokens > 5.0) {
+                state.tokens = 5.0;
+            }
+            if (state.tokens < 1.0) {
+                QByteArray err = buildError(ErrorCode::NotDefined, QStringLiteral("Rate limit exceeded"));
+                m_socket->writeDatagram(err, sender, senderPort);
+                logEvent(QStringLiteral("transfer_rejected"), key, clientIp, req.filename, 0, QStringLiteral("failure"),
+                         QStringLiteral("Rate limit exceeded"));
+                continue;
+            }
+            state.tokens -= 1.0;
+        }
+
+        // 2. Global Max Connections Limit
+        if (m_maxConnections > 0 && m_activeSessions >= m_maxConnections) {
+            QByteArray err = buildError(ErrorCode::NotDefined, QStringLiteral("Too many concurrent connections"));
+            m_socket->writeDatagram(err, sender, senderPort);
+            logEvent(QStringLiteral("transfer_rejected"), key, clientIp, req.filename, 0, QStringLiteral("failure"),
+                     QStringLiteral("Too many concurrent connections"));
+            continue;
+        }
+
+        // 3. Per-IP Connection Limit
+        if (m_maxConnectionsPerIp > 0) {
+            int ipCount = 0;
+            for (auto *session : m_sessions) {
+                if (session->peerAddress() == sender) {
+                    ipCount++;
+                }
+            }
+            if (ipCount >= m_maxConnectionsPerIp) {
+                QByteArray err = buildError(ErrorCode::NotDefined, QStringLiteral("Too many concurrent connections from this IP"));
+                m_socket->writeDatagram(err, sender, senderPort);
+                logEvent(QStringLiteral("transfer_rejected"), key, clientIp, req.filename, 0, QStringLiteral("failure"),
+                         QStringLiteral("Too many concurrent connections from this IP"));
+                continue;
+            }
+        }
+
         // ACL Check
         if (!isAllowed(sender, isUpload)) {
             QByteArray err = buildError(ErrorCode::AccessViolation, QStringLiteral("Access violation by ACL policy"));
@@ -316,6 +425,22 @@ void TftpServer::onReadyRead() {
             logEvent(QStringLiteral("transfer_rejected"), key, clientIp, req.filename, 0, QStringLiteral("failure"),
                      QStringLiteral("Access violation by security policy"));
             continue;
+        }
+
+        // 4. Disk space pre-flight check for WRQ (tsize parameter check)
+        if (isUpload && req.options.contains(QLatin1String(kOptTsize))) {
+            bool sizeOk = false;
+            qint64 tsize = req.options.value(QLatin1String(kOptTsize)).toLongLong(&sizeOk);
+            if (sizeOk && tsize > 0) {
+                QStorageInfo storage(m_rootDir);
+                if (storage.isValid() && storage.isReady() && storage.bytesAvailable() < tsize) {
+                    QByteArray err = buildError(ErrorCode::DiskFull, QStringLiteral("Disk full or allocation limit reached"));
+                    m_socket->writeDatagram(err, sender, senderPort);
+                    logEvent(QStringLiteral("transfer_rejected"), key, clientIp, req.filename, 0, QStringLiteral("failure"),
+                             QStringLiteral("Disk full or allocation limit reached"));
+                    continue;
+                }
+            }
         }
 
         auto *session = new TftpSession(sender, senderPort, req, safePath, this);

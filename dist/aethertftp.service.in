@@ -1,15 +1,58 @@
 [Unit]
 Description=AetherTFTP Headless TFTP Server (v@PROJECT_VERSION@)
-After=network.target
+Documentation=https://github.com/beratatmaca/AetherTFTP
+After=network-online.target
+Wants=network-online.target
 
 [Service]
-Type=simple
+# Type=notify means systemd waits for READY=1 from sd_notify() before
+# considering the service active.  Requires AETHER_HAVE_SYSTEMD at build time.
+# Change to Type=simple if building without libsystemd.
+Type=notify
+
 User=nobody
 Group=nogroup
+
+# Allow binding to port 69 without full root privileges.
 AmbientCapabilities=CAP_NET_BIND_SERVICE
-ExecStart=/usr/bin/aethertftp --server --port 69 --dir /var/lib/tftpboot
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+
+ExecStart=@CMAKE_INSTALL_FULL_BINDIR@/aethertftp \
+    --server \
+    --port 69 \
+    --dir /var/lib/tftpboot \
+    --json-log
+
 Restart=on-failure
 RestartSec=5s
+
+# Watchdog: restart if the process hangs for more than 60 s.
+WatchdogSec=60s
+
+# ---- Sandboxing ----
+# Reduce the attack surface exposed to an exploit.
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/lib/tftpboot
+ReadOnlyPaths=/etc
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+
+# ---- Logging ----
+# Route structured JSON output to the journal when StandardError=journal.
+StandardOutput=null
+StandardError=journal
+SyslogIdentifier=aethertftp
 
 [Install]
 WantedBy=multi-user.target

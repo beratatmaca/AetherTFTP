@@ -13,22 +13,39 @@ namespace tftp {
 
 struct TftpSession::ReadTask : public QRunnable {
     QPointer<TftpSession> session;
+    QString filePath;
     qint64 block;
     qint64 offset;
     int blockSize;
+    bool isNetascii;
+    QByteArray netasciiData;  // shallow copy — QByteArray is implicitly shared
 
-    ReadTask(TftpSession *s, qint64 b, qint64 o, int sz) : session(s), block(b), offset(o), blockSize(sz) { setAutoDelete(true); }
+    ReadTask(TftpSession *s, qint64 b, qint64 o, int sz)
+        : session(s),
+          filePath(s->m_filePath),
+          block(b),
+          offset(o),
+          blockSize(sz),
+          isNetascii(s->m_isNetascii),
+          netasciiData(s->m_isNetascii ? s->m_netasciiData : QByteArray()) {
+        setAutoDelete(true);
+    }
 
     void run() override {
         QByteArray payload;
         bool ok = false;
         auto s = session;
         auto b = block;
-        auto o = offset;
-        auto sz = blockSize;
-        if (s) {
-            if (s->m_file && s->m_file->seek(o)) {
-                payload = s->m_file->read(sz);
+        if (isNetascii) {
+            // netasciiData is an implicitly-shared QByteArray; mid() is safe from any thread.
+            payload = netasciiData.mid(offset, blockSize);
+            ok = true;
+        } else {
+            // Open a private file descriptor per task to avoid seek/read races
+            // when multiple ReadTasks run concurrently for window sizes > 1.
+            QFile f(filePath);
+            if (f.open(QIODevice::ReadOnly) && f.seek(offset)) {
+                payload = f.read(blockSize);
                 ok = true;
             }
         }
@@ -49,25 +66,32 @@ struct TftpSession::WriteTask : public QRunnable {
     QPointer<TftpSession> session;
     qint64 block;
     QByteArray payload;
+    bool isNetascii;
 
-    WriteTask(TftpSession *s, qint64 b, QByteArray p) : session(s), block(b), payload(std::move(p)) { setAutoDelete(true); }
+    WriteTask(TftpSession *s, qint64 b, QByteArray p)
+        : session(s), block(b), payload(std::move(p)), isNetascii(s ? s->m_isNetascii : false) {
+        setAutoDelete(true);
+    }
 
     void run() override {
         bool ok = false;
         auto s = session;
         auto b = block;
         auto p = payload;
-        if (s) {
-            if (s->m_file) {
-                ok = (s->m_file->write(p) == p.size());
-            }
+        if (isNetascii) {
+            ok = true;
+        } else if (s && s->m_file) {
+            ok = (s->m_file->write(p) == p.size());
         }
         if (s) {
             int size = p.size();
             QMetaObject::invokeMethod(
                 s.data(),
-                [s, b, size, ok]() {
+                [s, b, p, size, ok, netascii = isNetascii]() {
                     if (s) {
+                        if (netascii && ok) {
+                            s->m_netasciiData.append(p);
+                        }
                         s->onDataBlockWritten(b, size, ok);
                     }
                 },
@@ -105,8 +129,10 @@ bool TftpSession::start() {
     m_sendTimer->setSingleShot(true);
     connect(m_sendTimer, &QTimer::timeout, this, &TftpSession::onSendTimerTimeout);
 
-    if (m_request.mode != QLatin1String(kModeOctet)) {
-        sendError(ErrorCode::IllegalOperation, QStringLiteral("Only octet mode is supported"));
+    if (m_request.mode == QLatin1String(kModeNetascii)) {
+        m_isNetascii = true;
+    } else if (m_request.mode != QLatin1String(kModeOctet)) {
+        sendError(ErrorCode::IllegalOperation, QStringLiteral("Only octet and netascii modes are supported"));
         return true;
     }
 
@@ -117,7 +143,13 @@ bool TftpSession::start() {
             sendError(ErrorCode::FileNotFound, QStringLiteral("File not found"));
             return true;
         }
-        m_totalBytes = m_file->size();
+        if (m_isNetascii) {
+            m_netasciiData = toNetascii(m_file->readAll());
+            m_file->close();
+            m_totalBytes = m_netasciiData.size();
+        } else {
+            m_totalBytes = m_file->size();
+        }
     } else {
         if (m_file->exists()) {
             sendError(ErrorCode::FileAlreadyExists, QStringLiteral("File already exists"));
@@ -136,7 +168,11 @@ bool TftpSession::start() {
         m_lastPacket = buildOack(accepted);
         sendPacketDeferred(m_lastPacket, true);
     } else if (m_isRead) {
-        sendDataBlock(1);
+        m_oackPending = false;
+        m_lastAckedBlock = 0;
+        m_nextBlockToSend = 1;
+        m_windowCache.clear();
+        fillWindow();
     } else {
         m_currentBlock = 0;
         sendAck(0);
@@ -195,7 +231,7 @@ void TftpSession::onReadyRead() {
         return;
     }
 
-    while (m_socket && m_socket->hasPendingDatagrams()) {
+    while (!m_finished && m_socket && m_socket->hasPendingDatagrams()) {
         QByteArray buf(int(m_socket->pendingDatagramSize()), Qt::Uninitialized);
         QHostAddress sender;
         quint16 senderPort = 0;
@@ -212,6 +248,9 @@ void TftpSession::onReadyRead() {
 }
 
 void TftpSession::processDatagram(const QByteArray &buf) {
+    if (m_finished) {
+        return;
+    }
     if (m_sendTimer && m_sendTimer->isActive()) {
         return;
     }
@@ -313,49 +352,81 @@ qint64 TftpSession::requestSessionDelay(qint64 packetSize) {
 // RRQ: we are sending the file
 
 void TftpSession::sendDataBlock(qint64 block) {
-    if (!m_file)
+    if (!m_file && !m_isNetascii)
         return;
 
     const qint64 offset = (block - 1) * m_blockSize;
     QThreadPool::globalInstance()->start(new ReadTask(this, block, offset, m_blockSize));
 }
 
+void TftpSession::fillWindow() {
+    while (m_nextBlockToSend <= m_lastAckedBlock + m_windowSize && !m_sentLastBlock && m_readTasksActive < m_windowSize) {
+        m_readTasksActive++;
+        sendDataBlock(m_nextBlockToSend);
+        m_nextBlockToSend++;
+    }
+}
+
 void TftpSession::onDataBlockRead(qint64 block, const QByteArray &payload, bool ok) {
+    m_readTasksActive--;
     if (!ok || m_finished)
         return;
 
-    m_currentBlock = block;
-    m_oackPending = false;
-    m_sentLastBlock = payload.size() < m_blockSize;
-    QByteArray finalPayload = payload;
-    if (!m_pskKey.isEmpty()) {
-        finalPayload = cryptPayload(payload, m_pskKey, quint16(block));
+    m_readBuffer[block] = payload;
+
+    while (m_readBuffer.contains(m_currentBlock + 1)) {
+        qint64 nextBlock = m_currentBlock + 1;
+        QByteArray nextPayload = m_readBuffer.take(nextBlock);
+        m_currentBlock = nextBlock;
+        m_sentLastBlock = nextPayload.size() < m_blockSize;
+        QByteArray finalPayload = nextPayload;
+        if (!m_pskKey.isEmpty()) {
+            finalPayload = cryptPayload(nextPayload, m_pskKey, quint16(nextBlock));
+        }
+        m_lastPacket = buildData(quint16(nextBlock), finalPayload);
+        m_windowCache.insert(nextBlock, m_lastPacket);
+        sendPacketDeferred(m_lastPacket, true);
     }
-    m_lastPacket = buildData(quint16(block), finalPayload);
-    sendPacketDeferred(m_lastPacket, true);
+
+    fillWindow();
 }
 
 void TftpSession::handleAck(quint16 block) {
     if (m_oackPending) {
         if (block == 0) {
             m_retries = 0;
-            sendDataBlock(1);
+            m_oackPending = false;
+            m_lastAckedBlock = 0;
+            m_nextBlockToSend = 1;
+            m_windowCache.clear();
+            fillWindow();
         }
         return;
     }
 
-    if (block != quint16(m_currentBlock))
-        return;
-
-    m_retries = 0;
-    m_bytesTransferred = qMin<qint64>(m_currentBlock * m_blockSize, m_totalBytes < 0 ? m_currentBlock * m_blockSize : m_totalBytes);
-    emit progress(m_bytesTransferred, m_totalBytes);
-
-    if (m_sentLastBlock) {
-        finish(true, QString());
-        return;
+    qint64 acked64 = -1;
+    for (auto it = m_windowCache.constBegin(); it != m_windowCache.constEnd(); ++it) {
+        if (quint16(it.key()) == block) {
+            acked64 = it.key();
+            break;
+        }
     }
-    sendDataBlock(m_currentBlock + 1);
+
+    if (acked64 > m_lastAckedBlock) {
+        m_retries = 0;
+        for (qint64 b = m_lastAckedBlock + 1; b <= acked64; ++b) {
+            m_windowCache.remove(b);
+        }
+        m_lastAckedBlock = acked64;
+        m_bytesTransferred = qMin<qint64>(m_lastAckedBlock * m_blockSize, m_totalBytes < 0 ? m_lastAckedBlock * m_blockSize : m_totalBytes);
+        emit progress(m_bytesTransferred, m_totalBytes);
+
+        if (m_sentLastBlock && m_windowCache.isEmpty()) {
+            finish(true, QString());
+            return;
+        }
+        fillWindow();
+    }
 }
 
 // WRQ: we are receiving the file
@@ -367,27 +438,39 @@ void TftpSession::sendAck(qint64 block) {
 }
 
 void TftpSession::handleData(quint16 block, const QByteArray &payload) {
-    const auto expected = quint16(m_currentBlock + 1);
-
-    if (block == quint16(m_currentBlock)) {
-        m_lastPacket = buildAck(block);
-        sendPacketDeferred(m_lastPacket, false);
-        return;
-    }
-    if (block != expected)
-        return;
-
     if (m_oackPending)
         m_oackPending = false;
+
+    qint64 expectedStart = m_currentBlock + 1;
+    qint64 expectedEnd = m_currentBlock + m_windowSize;
+    qint64 block64 = -1;
+    for (qint64 b = expectedStart; b <= expectedEnd; ++b) {
+        if (quint16(b) == block) {
+            block64 = b;
+            break;
+        }
+    }
+
+    if (block64 == -1) {
+        sendAck(m_currentBlock);
+        return;
+    }
 
     QByteArray finalPayload = payload;
     if (!m_pskKey.isEmpty()) {
         finalPayload = cryptPayload(payload, m_pskKey, block);
     }
-    QThreadPool::globalInstance()->start(new WriteTask(this, m_currentBlock + 1, finalPayload));
+
+    m_receiveBuffer[block64] = finalPayload;
+
+    if (!m_writeActive && m_receiveBuffer.contains(m_currentBlock + 1)) {
+        m_writeActive = true;
+        QThreadPool::globalInstance()->start(new WriteTask(this, m_currentBlock + 1, m_receiveBuffer.take(m_currentBlock + 1)));
+    }
 }
 
 void TftpSession::onDataBlockWritten(qint64 block, int size, bool ok) {
+    m_writeActive = false;
     if (m_finished)
         return;
 
@@ -398,16 +481,23 @@ void TftpSession::onDataBlockWritten(qint64 block, int size, bool ok) {
 
     m_bytesTransferred += size;
     m_retries = 0;
+    m_currentBlock = block;
     emit progress(m_bytesTransferred, m_totalBytes);
 
     const bool isLast = size < m_blockSize;
     if (isLast) {
-        m_file->flush();
+        if (m_file && m_file->isOpen()) {
+            m_file->flush();
+        }
         m_finished = true;
         sendAck(block);
         finish(true, QString());
     } else {
         sendAck(block);
+        if (m_receiveBuffer.contains(m_currentBlock + 1)) {
+            m_writeActive = true;
+            QThreadPool::globalInstance()->start(new WriteTask(this, m_currentBlock + 1, m_receiveBuffer.take(m_currentBlock + 1)));
+        }
     }
 }
 
@@ -426,8 +516,14 @@ void TftpSession::onTimeout() {
         return;
     }
     emit retransmissionOccurred();
-    if (!m_lastPacket.isEmpty()) {
-        sendPacketDeferred(m_lastPacket, true);
+    if (m_isRead) {
+        for (auto it = m_windowCache.constBegin(); it != m_windowCache.constEnd(); ++it) {
+            sendPacketDeferred(it.value(), true);
+        }
+    } else {
+        if (!m_lastPacket.isEmpty()) {
+            sendPacketDeferred(m_lastPacket, true);
+        }
     }
 }
 
@@ -445,6 +541,10 @@ void TftpSession::finish(bool ok, const QString &message) {
         m_timer->stop();
     if (m_sendTimer)
         m_sendTimer->stop();
+    if (ok && !m_isRead && m_isNetascii && m_file && m_file->isOpen()) {
+        m_file->resize(0);
+        m_file->write(fromNetascii(m_netasciiData));
+    }
     if (m_file && m_file->isOpen())
         m_file->close();
     emit finished(ok, message);
