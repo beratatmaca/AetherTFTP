@@ -116,7 +116,7 @@ jobs:
           ASAN_OPTIONS: detect_leaks=0:abort_on_error=1:strict_string_checks=1
           UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
           # TSAN — suppress known Qt false positives
-          TSAN_OPTIONS: halt_on_error=1:second_deadlock_stack=1
+          TSAN_OPTIONS: halt_on_error=1:second_deadlock_stack=1:suppressions=${{ github.workspace }}/.tsan_suppressions
         run: ctest --test-dir build --output-on-failure -C Debug
 
   # ─── Regression: window-size negotiation (dedicated slot) ─────────────────
