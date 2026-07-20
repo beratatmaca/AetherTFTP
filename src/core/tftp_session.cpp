@@ -6,97 +6,88 @@
 #include <QUdpSocket>
 #include <cmath>
 #include <utility>
-#include <QThreadPool>
 #include <QRunnable>
+#include <QThreadPool>
+#include <string>
+#include <vector>
 
 namespace tftp {
 
 struct TftpSession::ReadTask : public QRunnable {
-    const QPointer<TftpSession> session;
-    const QString filePath;
+    TftpSession *const session;
+    const std::string filePath;
     const qint64 block;
     const qint64 offset;
     const int blockSize;
     const bool isNetascii;
-    const QByteArray netasciiData;  // shallow copy — QByteArray is implicitly shared
+    const std::vector<char> netasciiData;
 
     ReadTask(TftpSession *s, qint64 b, qint64 o, int sz)
         : session(s),
-          filePath(s->m_filePath),
+          filePath(s->m_filePath.toStdString()),
           block(b),
           offset(o),
           blockSize(sz),
           isNetascii(s->m_isNetascii),
-          netasciiData(s->m_isNetascii ? s->m_netasciiData : QByteArray()) {
+          netasciiData(s->m_isNetascii
+                           ? std::vector<char>(s->m_netasciiData.constData(), s->m_netasciiData.constData() + s->m_netasciiData.size())
+                           : std::vector<char>()) {
         setAutoDelete(true);
     }
 
     void run() override {
         QByteArray payload;
         bool ok = false;
-        auto s = session;
-        auto b = block;
+        TftpSession *s = session;
+        qint64 b = block;
         if (isNetascii) {
-            // netasciiData is an implicitly-shared QByteArray; mid() is safe from any thread.
-            payload = netasciiData.mid(offset, blockSize);
-            ok = true;
+            if (offset < static_cast<qint64>(netasciiData.size())) {
+                qint64 len = std::min<qint64>(blockSize, static_cast<qint64>(netasciiData.size()) - offset);
+                payload = QByteArray(netasciiData.data() + offset, static_cast<int>(len));
+                ok = true;
+            }
         } else {
-            // Open a private file descriptor per task to avoid seek/read races
-            // when multiple ReadTasks run concurrently for window sizes > 1.
-            QFile f(filePath);
+            QFile f(QString::fromStdString(filePath));
             if (f.open(QIODevice::ReadOnly) && f.seek(offset)) {
                 payload = f.read(blockSize);
                 ok = true;
             }
         }
-        if (s) {
-            QMetaObject::invokeMethod(
-                s.data(),
-                [s, b, payload, ok]() {
-                    if (s) {
-                        s->onDataBlockRead(b, payload, ok);
-                    }
-                },
-                Qt::QueuedConnection);
-        }
+        QMetaObject::invokeMethod(s, [s, b, payload, ok]() { s->onDataBlockRead(b, payload, ok); }, Qt::QueuedConnection);
     }
 };
 
 struct TftpSession::WriteTask : public QRunnable {
-    const QPointer<TftpSession> session;
+    TftpSession *const session;
     const qint64 block;
-    const QByteArray payload;
+    const std::vector<char> payload;
     const bool isNetascii;
 
     WriteTask(TftpSession *s, qint64 b, QByteArray p)
-        : session(s), block(b), payload(std::move(p)), isNetascii(s ? s->m_isNetascii : false) {
+        : session(s), block(b), payload(p.constData(), p.constData() + p.size()), isNetascii(s ? s->m_isNetascii : false) {
         setAutoDelete(true);
     }
 
     void run() override {
-        bool ok = false;
-        auto s = session;
-        auto b = block;
-        auto p = payload;
-        if (isNetascii) {
-            ok = true;
-        } else if (s && s->m_file) {
-            ok = (s->m_file->write(p) == p.size());
-        }
-        if (s) {
-            int size = p.size();
-            QMetaObject::invokeMethod(
-                s.data(),
-                [s, b, p, size, ok, netascii = isNetascii]() {
-                    if (s) {
-                        if (netascii && ok) {
-                            s->m_netasciiData.append(p);
-                        }
-                        s->onDataBlockWritten(b, size, ok);
-                    }
-                },
-                Qt::QueuedConnection);
-        }
+        TftpSession *s = session;
+        qint64 b = block;
+        std::vector<char> pVec = payload;
+        bool netascii = isNetascii;
+        int size = static_cast<int>(pVec.size());
+        QMetaObject::invokeMethod(
+            s,
+            [s, b, pVec, size, netascii]() {
+                bool ok = false;
+                QByteArray p(pVec.data(), static_cast<int>(pVec.size()));
+                if (netascii) {
+                    s->m_netasciiData.append(p);
+                    ok = true;
+                } else if (s->m_file && s->m_file->isOpen()) {
+                    ok = (s->m_file->write(p) == size);
+                }
+                s->onDataBlockWritten(b, size, ok);
+            },
+            Qt::QueuedConnection);
     }
 };
 
