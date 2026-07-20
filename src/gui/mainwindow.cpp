@@ -385,10 +385,10 @@ QWidget *MainWindow::buildMainView() {
     connect(m_serverDirEdit, &QLineEdit::textChanged, this, &MainWindow::applyServerConfig);
     connect(m_serverPskKeyEdit, &QLineEdit::textChanged, this, &MainWindow::applyServerConfig);
     connect(m_serverMaxSpin, &QSpinBox::valueChanged, this, &MainWindow::applyServerConfig);
-    connect(m_serverSinglePortCheck, &QCheckBox::stateChanged, this, &MainWindow::applyServerConfig);
-    connect(m_serverJsonLoggingCheck, &QCheckBox::stateChanged, this, &MainWindow::applyServerConfig);
-    connect(m_serverAutoStartCheck, &QCheckBox::stateChanged, this, &MainWindow::applyServerConfig);
-    connect(m_serverProxyDhcpCheck, &QCheckBox::stateChanged, this, &MainWindow::applyServerConfig);
+    connect(m_serverSinglePortCheck, &QCheckBox::toggled, this, &MainWindow::applyServerConfig);
+    connect(m_serverJsonLoggingCheck, &QCheckBox::toggled, this, &MainWindow::applyServerConfig);
+    connect(m_serverAutoStartCheck, &QCheckBox::toggled, this, &MainWindow::applyServerConfig);
+    connect(m_serverProxyDhcpCheck, &QCheckBox::toggled, this, &MainWindow::applyServerConfig);
     connect(m_serverProxyDhcpBootFileEdit, &QLineEdit::textChanged, this, &MainWindow::applyServerConfig);
     connect(m_serverAllowedExtsEdit, &QLineEdit::textChanged, this, &MainWindow::applyServerConfig);
     connect(m_serverBlockedExtsEdit, &QLineEdit::textChanged, this, &MainWindow::applyServerConfig);
