@@ -24,6 +24,7 @@ Written in C++17 and utilizing the Qt 6 framework, it is designed for speed, rel
 * 🔒 **Encrypts transfers with symmetric keys.**
 * 🔍 **Includes detailed log search filters.**
 * ⚙️ **Offers automatic server startup.**
+* 🌐 **Includes ProxyDHCP helper for PXE network booting.**
 
 ## Installation
 
@@ -170,6 +171,14 @@ Spawn a standalone TFTP server listening on port 6969, serving files out of a sp
 
 ```bash
 ./build/aethertftp --server --port 6969 --dir /var/tftp
+```
+
+### PXE ProxyDHCP Boot Server Mode
+
+Spawn a TFTP server with an integrated ProxyDHCP helper listening on UDP port 67 to offer PXE boot parameters (Option 66/67) to PXE network boot clients:
+
+```bash
+./build/aethertftp --server --port 69 --dir /var/tftpboot --proxy-dhcp --proxy-bootfile bootx64.efi
 ```
 
 ### Client File Download (Get)

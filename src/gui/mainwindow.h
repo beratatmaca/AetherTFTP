@@ -121,6 +121,8 @@ private:
     int m_serverGlobalLimit = 0;
     int m_serverSessionLimit = 0;
     bool m_serverAutoStart = false;
+    bool m_serverProxyDhcp = false;
+    QString m_serverProxyDhcpBootFile = QStringLiteral("bootx64.efi");
 
     // Server controls.
     QComboBox *m_serverProfileCombo = nullptr;
@@ -132,6 +134,8 @@ private:
     QCheckBox *m_serverSinglePortCheck = nullptr;
     QCheckBox *m_serverJsonLoggingCheck = nullptr;
     QCheckBox *m_serverAutoStartCheck = nullptr;
+    QCheckBox *m_serverProxyDhcpCheck = nullptr;
+    QLineEdit *m_serverProxyDhcpBootFileEdit = nullptr;
     QLineEdit *m_serverAllowedExtsEdit = nullptr;
     QLineEdit *m_serverBlockedExtsEdit = nullptr;
     QLineEdit *m_serverIpWhitelistEdit = nullptr;

@@ -318,6 +318,16 @@ QWidget *MainWindow::buildMainView() {
     m_serverAutoStartCheck->setToolTip(tr("Automatically start the TFTP server when the application is launched."));
     serverForm->addRow(QString(), m_serverAutoStartCheck);
 
+    m_serverProxyDhcpCheck = new QCheckBox(tr("Enable ProxyDHCP (PXE Boot)"), leftContainer);
+    m_serverProxyDhcpCheck->setToolTip(
+        tr("Enable PXE ProxyDHCP server helper on UDP port 67 to offer network boot options (Option 66/67) to PXE clients."));
+    serverForm->addRow(QString(), m_serverProxyDhcpCheck);
+
+    m_serverProxyDhcpBootFileEdit = new QLineEdit(leftContainer);
+    m_serverProxyDhcpBootFileEdit->setPlaceholderText(tr("e.g. bootx64.efi, pxelinux.0"));
+    m_serverProxyDhcpBootFileEdit->setToolTip(tr("PXE boot file name offered to PXE clients (e.g. bootx64.efi, pxelinux.0)."));
+    serverForm->addRow(tr("PXE Bootfile:"), m_serverProxyDhcpBootFileEdit);
+
     m_serverAllowedExtsEdit = new QLineEdit(leftContainer);
     m_serverAllowedExtsEdit->setPlaceholderText(tr("e.g. txt,bin (empty = all)"));
     m_serverAllowedExtsEdit->setToolTip(
@@ -378,6 +388,8 @@ QWidget *MainWindow::buildMainView() {
     connect(m_serverSinglePortCheck, &QCheckBox::stateChanged, this, &MainWindow::applyServerConfig);
     connect(m_serverJsonLoggingCheck, &QCheckBox::stateChanged, this, &MainWindow::applyServerConfig);
     connect(m_serverAutoStartCheck, &QCheckBox::stateChanged, this, &MainWindow::applyServerConfig);
+    connect(m_serverProxyDhcpCheck, &QCheckBox::stateChanged, this, &MainWindow::applyServerConfig);
+    connect(m_serverProxyDhcpBootFileEdit, &QLineEdit::textChanged, this, &MainWindow::applyServerConfig);
     connect(m_serverAllowedExtsEdit, &QLineEdit::textChanged, this, &MainWindow::applyServerConfig);
     connect(m_serverBlockedExtsEdit, &QLineEdit::textChanged, this, &MainWindow::applyServerConfig);
     connect(m_serverIpWhitelistEdit, &QLineEdit::textChanged, this, &MainWindow::applyServerConfig);
@@ -683,6 +695,9 @@ void MainWindow::applyServerConfig() {
     m_serverSinglePort = m_serverSinglePortCheck->isChecked();
     m_serverJsonLogging = m_serverJsonLoggingCheck->isChecked();
     m_serverAutoStart = m_serverAutoStartCheck->isChecked();
+    m_serverProxyDhcp = m_serverProxyDhcpCheck ? m_serverProxyDhcpCheck->isChecked() : false;
+    m_serverProxyDhcpBootFile =
+        m_serverProxyDhcpBootFileEdit ? m_serverProxyDhcpBootFileEdit->text().trimmed() : QStringLiteral("bootx64.efi");
 
     m_serverAllowedExts.clear();
     for (const QString &item : m_serverAllowedExtsEdit->text().split(QLatin1Char(','), Qt::SkipEmptyParts)) {
@@ -724,6 +739,8 @@ void MainWindow::applyServerConfig() {
     if (m_server) {
         m_server->setSinglePortMode(m_serverSinglePort);
         m_server->setJsonLoggingEnabled(m_serverJsonLogging);
+        m_server->setProxyDhcpEnabled(m_serverProxyDhcp);
+        m_server->setProxyDhcpBootFile(m_serverProxyDhcpBootFile.isEmpty() ? QStringLiteral("bootx64.efi") : m_serverProxyDhcpBootFile);
         m_server->setAllowedExtensions(m_serverAllowedExts);
         m_server->setBlockedExtensions(m_serverBlockedExts);
         m_server->setWhitelist(m_serverIpWhitelist);
@@ -1023,6 +1040,8 @@ void MainWindow::loadSettings() {
     m_serverGlobalLimit = settings.value(QStringLiteral("server/globalLimit"), 0).toInt();
     m_serverSessionLimit = settings.value(QStringLiteral("server/sessionLimit"), 0).toInt();
     m_serverAutoStart = settings.value(QStringLiteral("server/autoStart"), false).toBool();
+    m_serverProxyDhcp = settings.value(QStringLiteral("server/proxyDhcp"), false).toBool();
+    m_serverProxyDhcpBootFile = settings.value(QStringLiteral("server/proxyBootFile"), QStringLiteral("bootx64.efi")).toString();
     m_pskKey = settings.value(QStringLiteral("client/pskKey")).toString();
     m_serverPskKey = settings.value(QStringLiteral("server/pskKey")).toString();
 
@@ -1033,6 +1052,8 @@ void MainWindow::loadSettings() {
         QSignalBlocker b4(m_serverSinglePortCheck);
         QSignalBlocker b5(m_serverJsonLoggingCheck);
         QSignalBlocker b14(m_serverAutoStartCheck);
+        QSignalBlocker b17(m_serverProxyDhcpCheck);
+        QSignalBlocker b18(m_serverProxyDhcpBootFileEdit);
         QSignalBlocker b6(m_serverAllowedExtsEdit);
         QSignalBlocker b7(m_serverBlockedExtsEdit);
         QSignalBlocker b11(m_serverIpWhitelistEdit);
@@ -1050,6 +1071,10 @@ void MainWindow::loadSettings() {
         m_serverSinglePortCheck->setChecked(m_serverSinglePort);
         m_serverJsonLoggingCheck->setChecked(m_serverJsonLogging);
         m_serverAutoStartCheck->setChecked(m_serverAutoStart);
+        if (m_serverProxyDhcpCheck)
+            m_serverProxyDhcpCheck->setChecked(m_serverProxyDhcp);
+        if (m_serverProxyDhcpBootFileEdit)
+            m_serverProxyDhcpBootFileEdit->setText(m_serverProxyDhcpBootFile);
         m_serverAllowedExtsEdit->setText(m_serverAllowedExts.join(QLatin1Char(',')));
         m_serverBlockedExtsEdit->setText(m_serverBlockedExts.join(QLatin1Char(',')));
         m_serverIpWhitelistEdit->setText(m_serverIpWhitelist.join(QLatin1Char(',')));
@@ -1107,6 +1132,8 @@ void MainWindow::saveSettings() {
     settings.setValue(QStringLiteral("server/singlePort"), m_serverSinglePort);
     settings.setValue(QStringLiteral("server/jsonLogging"), m_serverJsonLogging);
     settings.setValue(QStringLiteral("server/autoStart"), m_serverAutoStart);
+    settings.setValue(QStringLiteral("server/proxyDhcp"), m_serverProxyDhcp);
+    settings.setValue(QStringLiteral("server/proxyBootFile"), m_serverProxyDhcpBootFile);
     settings.setValue(QStringLiteral("server/allowedExts"), m_serverAllowedExts);
     settings.setValue(QStringLiteral("server/blockedExts"), m_serverBlockedExts);
     settings.setValue(QStringLiteral("server/ipWhitelist"), m_serverIpWhitelist);
@@ -1304,6 +1331,11 @@ void MainWindow::onServerProfileChanged(int index) {
         m_serverSinglePortCheck->setChecked(settings.value(QStringLiteral("server/singlePort"), false).toBool());
         m_serverJsonLoggingCheck->setChecked(settings.value(QStringLiteral("server/jsonLogging"), false).toBool());
         m_serverAutoStartCheck->setChecked(settings.value(QStringLiteral("server/autoStart"), false).toBool());
+        if (m_serverProxyDhcpCheck)
+            m_serverProxyDhcpCheck->setChecked(settings.value(QStringLiteral("server/proxyDhcp"), false).toBool());
+        if (m_serverProxyDhcpBootFileEdit)
+            m_serverProxyDhcpBootFileEdit->setText(
+                settings.value(QStringLiteral("server/proxyBootFile"), QStringLiteral("bootx64.efi")).toString());
         m_serverAllowedExtsEdit->setText(settings.value(QStringLiteral("server/allowedExts")).toStringList().join(QLatin1Char(',')));
         m_serverBlockedExtsEdit->setText(settings.value(QStringLiteral("server/blockedExts")).toStringList().join(QLatin1Char(',')));
         m_serverIpWhitelistEdit->setText(settings.value(QStringLiteral("server/ipWhitelist")).toStringList().join(QLatin1Char(',')));
@@ -1333,6 +1365,10 @@ void MainWindow::onServerProfileChanged(int index) {
     m_serverSinglePortCheck->setChecked(settings.value(QStringLiteral("singlePort"), false).toBool());
     m_serverJsonLoggingCheck->setChecked(settings.value(QStringLiteral("jsonLogging"), false).toBool());
     m_serverAutoStartCheck->setChecked(settings.value(QStringLiteral("autoStart"), false).toBool());
+    if (m_serverProxyDhcpCheck)
+        m_serverProxyDhcpCheck->setChecked(settings.value(QStringLiteral("proxyDhcp"), false).toBool());
+    if (m_serverProxyDhcpBootFileEdit)
+        m_serverProxyDhcpBootFileEdit->setText(settings.value(QStringLiteral("proxyBootFile"), QStringLiteral("bootx64.efi")).toString());
     m_serverAllowedExtsEdit->setText(settings.value(QStringLiteral("allowedExts")).toStringList().join(QLatin1Char(',')));
     m_serverBlockedExtsEdit->setText(settings.value(QStringLiteral("blockedExts")).toStringList().join(QLatin1Char(',')));
     m_serverIpWhitelistEdit->setText(settings.value(QStringLiteral("ipWhitelist")).toStringList().join(QLatin1Char(',')));
@@ -1369,6 +1405,9 @@ void MainWindow::saveCurrentServerProfile() {
     settings.setValue(QStringLiteral("singlePort"), m_serverSinglePortCheck->isChecked());
     settings.setValue(QStringLiteral("jsonLogging"), m_serverJsonLoggingCheck->isChecked());
     settings.setValue(QStringLiteral("autoStart"), m_serverAutoStartCheck->isChecked());
+    settings.setValue(QStringLiteral("proxyDhcp"), m_serverProxyDhcpCheck ? m_serverProxyDhcpCheck->isChecked() : false);
+    settings.setValue(QStringLiteral("proxyBootFile"),
+                      m_serverProxyDhcpBootFileEdit ? m_serverProxyDhcpBootFileEdit->text() : QStringLiteral("bootx64.efi"));
     settings.setValue(QStringLiteral("allowedExts"), m_serverAllowedExtsEdit->text().split(QLatin1Char(','), Qt::SkipEmptyParts));
     settings.setValue(QStringLiteral("blockedExts"), m_serverBlockedExtsEdit->text().split(QLatin1Char(','), Qt::SkipEmptyParts));
     settings.setValue(QStringLiteral("ipWhitelist"), m_serverIpWhitelistEdit->text().split(QLatin1Char(','), Qt::SkipEmptyParts));
@@ -1579,6 +1618,9 @@ void MainWindow::importServerProfile() {
     settings.setValue(QStringLiteral("globalLimit"), server.value(QStringLiteral("globalLimit")).toInt(0));
     settings.setValue(QStringLiteral("sessionLimit"), server.value(QStringLiteral("sessionLimit")).toInt(0));
     settings.setValue(QStringLiteral("autoStart"), server.value(QStringLiteral("autoStart")).toBool(false));
+    settings.setValue(QStringLiteral("proxyDhcp"), server.value(QStringLiteral("proxyDhcp")).toBool(false));
+    settings.setValue(QStringLiteral("proxyBootFile"),
+                      server.value(QStringLiteral("proxyBootFile")).toString(QStringLiteral("bootx64.efi")));
     settings.setValue(QStringLiteral("pskKey"), server.value(QStringLiteral("pskKey")).toString());
     settings.endGroup();
     settings.endGroup();
@@ -1614,6 +1656,9 @@ void MainWindow::exportServerProfile() {
     server.insert(QStringLiteral("maxConcurrent"), settings.value(QStringLiteral("maxConcurrent"), 10).toInt());
     server.insert(QStringLiteral("singlePort"), settings.value(QStringLiteral("singlePort"), false).toBool());
     server.insert(QStringLiteral("jsonLogging"), settings.value(QStringLiteral("jsonLogging"), false).toBool());
+    server.insert(QStringLiteral("proxyDhcp"), settings.value(QStringLiteral("proxyDhcp"), false).toBool());
+    server.insert(QStringLiteral("proxyBootFile"),
+                  settings.value(QStringLiteral("proxyBootFile"), QStringLiteral("bootx64.efi")).toString());
 
     QJsonArray allowedArray;
     for (const auto &val : settings.value(QStringLiteral("allowedExts")).toStringList())
