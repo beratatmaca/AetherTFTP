@@ -175,13 +175,15 @@ jobs:
           key: mxe-qt6-x86_64-${{ hashFiles('.github/workflows/ci.yml') }}
 
       - name: Build MXE + Qt6 (first run only, ~60 min)
-        if: steps.cache-mxe.outputs.cache-hit != 'true'
         run: |
-          git clone --depth 1 https://github.com/mxe/mxe.git /opt/mxe
-          cd /opt/mxe
-          make -j$(nproc) MXE_TARGETS="x86_64-w64-mingw32.static" \
-               qt6-qtbase JOBS=$(nproc) \
-               MXE_USE_CCACHE='' 2>&1 | tail -50
+          if [ ! -f /opt/mxe/usr/x86_64-w64-mingw32.static/share/cmake/mxe-conf.cmake ]; then
+            rm -rf /opt/mxe
+            git clone --depth 1 https://github.com/mxe/mxe.git /opt/mxe
+            cd /opt/mxe
+            make -j$(nproc) MXE_TARGETS="x86_64-w64-mingw32.static" \
+                 qt6-qtbase JOBS=$(nproc) \
+                 MXE_USE_CCACHE='' 2>&1 | tail -50
+          fi
 
       - name: Configure (Windows target)
         run: |

@@ -12,13 +12,13 @@
 namespace tftp {
 
 struct TftpSession::ReadTask : public QRunnable {
-    QPointer<TftpSession> session;
-    QString filePath;
-    qint64 block;
-    qint64 offset;
-    int blockSize;
-    bool isNetascii;
-    QByteArray netasciiData;  // shallow copy — QByteArray is implicitly shared
+    const QPointer<TftpSession> session;
+    const QString filePath;
+    const qint64 block;
+    const qint64 offset;
+    const int blockSize;
+    const bool isNetascii;
+    const QByteArray netasciiData;  // shallow copy — QByteArray is implicitly shared
 
     ReadTask(TftpSession *s, qint64 b, qint64 o, int sz)
         : session(s),
@@ -63,10 +63,10 @@ struct TftpSession::ReadTask : public QRunnable {
 };
 
 struct TftpSession::WriteTask : public QRunnable {
-    QPointer<TftpSession> session;
-    qint64 block;
-    QByteArray payload;
-    bool isNetascii;
+    const QPointer<TftpSession> session;
+    const qint64 block;
+    const QByteArray payload;
+    const bool isNetascii;
 
     WriteTask(TftpSession *s, qint64 b, QByteArray p)
         : session(s), block(b), payload(std::move(p)), isNetascii(s ? s->m_isNetascii : false) {
