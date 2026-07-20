@@ -1,6 +1,7 @@
 #include "core/tftp_server.h"
 
 #include "core/metrics_exporter.h"
+#include "core/pxe_proxy_dhcp.h"
 #include "core/qlog.h"
 #include "core/tftp_protocol.h"
 #include "core/tftp_session.h"
@@ -60,6 +61,16 @@ bool TftpServer::listen(const QHostAddress &address, quint16 port, const QString
     m_watchdogTimer->start(15000);
 #endif
 
+    if (m_proxyDhcpEnabled) {
+        if (!m_proxyDhcpServer) {
+            m_proxyDhcpServer = new PxeProxyDhcp(this);
+            connect(m_proxyDhcpServer, &PxeProxyDhcp::logMessage, this, &TftpServer::logMessage);
+        }
+        m_proxyDhcpServer->setBootFile(m_proxyDhcpBootFile);
+        m_proxyDhcpServer->setTftpServerAddress(address);
+        m_proxyDhcpServer->listen(67);
+    }
+
     logEvent(QStringLiteral("server_start"), QStringLiteral("server"), address.toString(), QString(), 0, QStringLiteral("success"),
              QStringLiteral("Listening on %1:%2, serving %3").arg(address.toString()).arg(m_socket->localPort()).arg(m_rootDir));
     return true;
@@ -67,6 +78,10 @@ bool TftpServer::listen(const QHostAddress &address, quint16 port, const QString
 
 void TftpServer::close() {
     stopMetricsServer();
+
+    if (m_proxyDhcpServer) {
+        m_proxyDhcpServer->close();
+    }
 
 #ifdef AETHER_HAVE_SYSTEMD
     if (m_watchdogTimer) {

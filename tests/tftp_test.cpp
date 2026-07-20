@@ -17,6 +17,8 @@
 #include <unistd.h>
 #endif
 
+#include "core/metrics_exporter.h"
+#include "core/pxe_proxy_dhcp.h"
 #include "core/tftp_client.h"
 #include "core/tftp_protocol.h"
 #include "core/tftp_server.h"
@@ -76,6 +78,7 @@ private slots:
     void testPacketLossSimulation();
     void testTransferAbort();
     void testAgainstTftpHpa();
+    void testProxyDhcp();
 
 private:
     QByteArray makePayload(int size, char seed) const;
@@ -1297,6 +1300,66 @@ void TFTPProtocolTest::testAgainstTftpHpa() {
     uploadedFile.close();
 
     server.close();
+}
+
+void TFTPProtocolTest::testProxyDhcp() {
+    // 1. Construct a dummy BOOTP request header (236 bytes minimum + magic cookie)
+    QByteArray req;
+    req.resize(240);
+    req.fill(0);
+    req[0] = 1;  // BOOTREQUEST
+    req[1] = 1;  // Ethernet
+    req[2] = 6;  // hlen
+    // Set Transaction ID (xid)
+    quint32 xid = 0x12345678;
+    quint32 xidBE = qToBigEndian(xid);
+    memcpy(req.data() + 4, &xidBE, 4);
+    // Set Magic Cookie at offset 236
+    quint32 magicBE = qToBigEndian(0x63825363);
+    memcpy(req.data() + 236, &magicBE, 4);
+
+    // Option 53: DHCPDISCOVER (1)
+    req.append(static_cast<char>(53));
+    req.append(static_cast<char>(1));
+    req.append(static_cast<char>(1));
+
+    // Non-PXE Client test -> Should be ignored
+    QHostAddress serverIp("192.168.1.100");
+    QByteArray resNonPxe = PxeProxyDhcp::processDhcpPacket(req, serverIp, "bootx64.efi", serverIp, "tftp.local");
+    QVERIFY(resNonPxe.isEmpty());
+
+    // Add Option 60: PXEClient
+    req.append(static_cast<char>(60));
+    const char pxeVendor[] = "PXEClient:Arch:00000:UNDI:002001";
+    req.append(static_cast<char>(sizeof(pxeVendor) - 1));
+    req.append(pxeVendor, sizeof(pxeVendor) - 1);
+    req.append(static_cast<char>(255));  // END
+
+    // PXE Client test -> Should return ProxyDHCP DHCPOFFER response
+    QString macStr;
+    QByteArray resPxe = PxeProxyDhcp::processDhcpPacket(req, serverIp, "pxelinux.0", serverIp, "tftp.local", &macStr);
+    QVERIFY(!resPxe.isEmpty());
+    QVERIFY(resPxe.size() >= 240);
+    QCOMPARE(static_cast<quint8>(resPxe.at(0)), 2);  // BOOTREPLY
+
+    // Check siaddr in BOOTREPLY header (offset 20)
+    quint32 siaddrBE = 0;
+    memcpy(&siaddrBE, resPxe.constData() + 20, 4);
+    QCOMPARE(qFromBigEndian(siaddrBE), serverIp.toIPv4Address());
+
+    // Check filename in BOOTREPLY header (offset 108)
+    const char *fileInHeader = resPxe.constData() + 108;
+    QCOMPARE(QString::fromUtf8(fileInHeader), QStringLiteral("pxelinux.0"));
+
+    // Check Option 53 (DHCPOFFER = 2) in response
+    QVERIFY(resPxe.contains("\x35\x01\x02"));
+
+    // 2. Test server integration
+    TftpServer server;
+    server.setProxyDhcpEnabled(true);
+    server.setProxyDhcpBootFile("ipxe.efi");
+    QVERIFY(server.isProxyDhcpEnabled());
+    QCOMPARE(server.proxyDhcpBootFile(), QStringLiteral("ipxe.efi"));
 }
 
 QTEST_MAIN(TFTPProtocolTest)

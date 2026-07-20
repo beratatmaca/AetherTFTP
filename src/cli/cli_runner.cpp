@@ -69,6 +69,9 @@ int CliRunner::run(QCoreApplication &app, const QStringList &args) {
         {QStringLiteral("virtual-mappings"), QStringLiteral("Comma-separated prefix=path mappings (e.g. fw=/tmp/fw,bin=/var/bin)."),
          QStringLiteral("mappings")},
         {QStringLiteral("psk"), QStringLiteral("Symmetric pre-shared key (passphrase) to secure data packets."), QStringLiteral("key")},
+        {QStringLiteral("proxy-dhcp"), QStringLiteral("Enable ProxyDHCP server for PXE boot options on UDP port 67.")},
+        {QStringLiteral("proxy-bootfile"), QStringLiteral("PXE boot file name for ProxyDHCP (default bootx64.efi)."),
+         QStringLiteral("file")},
     });
 
     QStringList argsToParse = args;
@@ -139,6 +142,14 @@ int CliRunner::runServer(QCommandLineParser &parser, quint16 port) {
 
     if (parser.isSet(QStringLiteral("psk"))) {
         server.setPskKey(parser.value(QStringLiteral("psk")));
+    }
+
+    if (parser.isSet(QStringLiteral("proxy-dhcp"))) {
+        server.setProxyDhcpEnabled(true);
+    }
+
+    if (parser.isSet(QStringLiteral("proxy-bootfile"))) {
+        server.setProxyDhcpBootFile(parser.value(QStringLiteral("proxy-bootfile")));
     }
 
     if (!server.listen(QHostAddress(bindAddr), port, dir)) {

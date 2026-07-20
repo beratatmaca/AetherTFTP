@@ -14,6 +14,7 @@ namespace tftp {
 
 class TftpSession;
 class MetricsExporter;
+class PxeProxyDhcp;
 
 /**
  * @brief TFTP listener that dispatches each request to its own session.
@@ -182,8 +183,7 @@ public:
     /** @brief Format server metrics for Prometheus exporter. */
     QString getMetricsFormatted() const;
 
-    /**
-     * @brief Start the metrics exporter server.
+    /** @brief Start the metrics exporter server.
      * @param port TCP port to listen on (0 lets the OS choose).
      * @param address Bind address; defaults to loopback so operational metrics
      *        are not exposed on all interfaces. Pass QHostAddress::Any to allow
@@ -195,6 +195,19 @@ public:
     void stopMetricsServer();
     /** @return The metrics server port, or 0 if not running. */
     quint16 metricsServerPort() const;
+
+    /** @brief Enable/disable ProxyDHCP server helper. */
+    void setProxyDhcpEnabled(bool enable) { m_proxyDhcpEnabled = enable; }
+    /** @return @c true if ProxyDHCP helper is enabled. */
+    bool isProxyDhcpEnabled() const { return m_proxyDhcpEnabled; }
+
+    /** @brief Set the PXE boot file name for ProxyDHCP responses. */
+    void setProxyDhcpBootFile(const QString &file) { m_proxyDhcpBootFile = file; }
+    /** @return The PXE boot file name for ProxyDHCP. */
+    QString proxyDhcpBootFile() const { return m_proxyDhcpBootFile; }
+
+    /** @return Pointer to internal PxeProxyDhcp instance. */
+    PxeProxyDhcp *proxyDhcpServer() const { return m_proxyDhcpServer; }
 
 signals:
     /**
@@ -278,6 +291,11 @@ private:
     mutable qint64 m_retransmissionCount = 0;
 
     QTimer *m_watchdogTimer = nullptr;
+
+    // ProxyDHCP Server
+    PxeProxyDhcp *m_proxyDhcpServer = nullptr;
+    bool m_proxyDhcpEnabled = false;
+    QString m_proxyDhcpBootFile = QStringLiteral("bootx64.efi");
 
 private slots:
     void onWatchdogTimeout();
