@@ -169,11 +169,34 @@ jobs:
         with:
           path: artifacts
 
-      - name: Flatten Artifact Directory
+      - name: Flatten Artifact Directory and Standardize Names
+        env:
+          IS_TAG: ${{ needs.version.outputs.is_tag }}
         run: |
           mkdir -p release-files
           find artifacts -type f \( -name "*.deb" -o -name "*.dmg" -o -name "*.msi" -o -name "*.zip" \) -exec cp {} release-files/ \;
+          if [ "$IS_TAG" != "true" ]; then
+            cd release-files
+            for f in *.deb; do [ -f "$f" ] && mv "$f" AetherTFTP-latest-Linux.deb; done
+            for f in *.msi; do [ -f "$f" ] && mv "$f" AetherTFTP-latest-Windows.msi; done
+            for f in *.dmg; do [ -f "$f" ] && mv "$f" AetherTFTP-latest-macOS.dmg; done
+            for f in *.zip; do [ -f "$f" ] && mv "$f" AetherTFTP-latest-Windows-Portable.zip; done
+            cd ..
+          fi
           ls -la release-files/
+
+      - name: Clear Old Assets (Rolling Latest Only)
+        if: needs.version.outputs.is_tag != 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view latest &>/dev/null; then
+            assets=$(gh release view latest --json assets -q '.assets[].name')
+            for asset in $assets; do
+              echo "Deleting old asset: $asset"
+              gh release delete-asset latest "$asset" --yes || true
+            done
+          fi
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
@@ -182,6 +205,7 @@ jobs:
           tag_name: ${{ needs.version.outputs.is_tag == 'true' && github.ref_name || 'latest' }}
           name: ${{ needs.version.outputs.is_tag == 'true' && format('AetherTFTP v{0}', needs.version.outputs.version) || format('AetherTFTP v{0} (latest main)', needs.version.outputs.version) }}
           prerelease: ${{ needs.version.outputs.is_tag != 'true' }}
+          make_latest: ${{ needs.version.outputs.is_tag == 'true' && 'true' || 'false' }}
           body: |
             Automated build of AetherTFTP.
 
