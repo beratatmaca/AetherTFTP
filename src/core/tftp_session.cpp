@@ -36,24 +36,31 @@ struct TftpSession::ReadTask : public QRunnable {
     }
 
     void run() override {
-        QByteArray payload;
+        std::vector<char> payloadVec;
         bool ok = false;
         TftpSession *s = session;
         qint64 b = block;
         if (isNetascii) {
             if (offset < static_cast<qint64>(netasciiData.size())) {
                 qint64 len = std::min<qint64>(blockSize, static_cast<qint64>(netasciiData.size()) - offset);
-                payload = QByteArray(netasciiData.data() + offset, static_cast<int>(len));
+                payloadVec.assign(netasciiData.data() + offset, netasciiData.data() + offset + len);
                 ok = true;
             }
         } else {
             QFile f(QString::fromStdString(filePath));
             if (f.open(QIODevice::ReadOnly) && f.seek(offset)) {
-                payload = f.read(blockSize);
+                QByteArray raw = f.read(blockSize);
+                payloadVec.assign(raw.constData(), raw.constData() + raw.size());
                 ok = true;
             }
         }
-        QMetaObject::invokeMethod(s, [s, b, payload, ok]() { s->onDataBlockRead(b, payload, ok); }, Qt::QueuedConnection);
+        QMetaObject::invokeMethod(
+            s,
+            [s, b, payload = std::move(payloadVec), ok]() {
+                QByteArray p(payload.data(), static_cast<int>(payload.size()));
+                s->onDataBlockRead(b, p, ok);
+            },
+            Qt::QueuedConnection);
     }
 };
 
@@ -63,7 +70,7 @@ struct TftpSession::WriteTask : public QRunnable {
     const std::vector<char> payload;
     const bool isNetascii;
 
-    WriteTask(TftpSession *s, qint64 b, QByteArray p)
+    WriteTask(TftpSession *s, qint64 b, const QByteArray &p)
         : session(s), block(b), payload(p.constData(), p.constData() + p.size()), isNetascii(s ? s->m_isNetascii : false) {
         setAutoDelete(true);
     }

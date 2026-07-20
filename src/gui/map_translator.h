@@ -20,7 +20,7 @@ public:
         if (m_translations.contains(key)) {
             return m_translations.value(key);
         }
-        return QString();
+        return {};
     }
 
     static MapTranslator *create(const QString &lang, QObject *parent = nullptr) {

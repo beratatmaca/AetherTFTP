@@ -1,11 +1,11 @@
 #pragma once
 
-#include <QHostAddress>
-#include <QObject>
-#include <QString>
+#include <cstdint>
 #include <QElapsedTimer>
+#include <QHostAddress>
 #include <QList>
 #include <QMap>
+#include <QObject>
 
 class QUdpSocket;
 class QTimer;
@@ -30,7 +30,7 @@ class EmbeddedWebServer;
 class TftpServer : public QObject {
     Q_OBJECT
 public:
-    enum class AccessLevel { Blocked = 0, ReadOnly = 1, ReadWrite = 2 };
+    enum class AccessLevel : std::uint8_t { Blocked = 0, ReadOnly = 1, ReadWrite = 2 };
 
     struct SubnetAccessRule {
         QHostAddress address;

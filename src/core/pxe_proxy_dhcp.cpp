@@ -125,18 +125,18 @@ void PxeProxyDhcp::onReadyRead() {
 QByteArray PxeProxyDhcp::processDhcpPacket(const QByteArray &requestData, const QHostAddress &serverAddr, const QString &bootFile,
                                            const QHostAddress &tftpServerAddr, const QString &tftpServerName, QString *outClientMac) {
     if (requestData.size() < static_cast<int>(sizeof(DhcpHeader))) {
-        return QByteArray();
+        return {};
     }
 
     const auto *reqHeader = reinterpret_cast<const DhcpHeader *>(requestData.constData());
     if (reqHeader->op != 1) {
-        return QByteArray();  // Only process BOOTREQUEST (op = 1)
+        return {};  // Only process BOOTREQUEST (op = 1)
     }
 
     // Verify Magic Cookie
     quint32 cookie = qFromBigEndian(reqHeader->magicCookie);
     if (cookie != kDhcpMagicCookie) {
-        return QByteArray();
+        return {};
     }
 
     // Parse DHCP Options
@@ -145,7 +145,7 @@ QByteArray PxeProxyDhcp::processDhcpPacket(const QByteArray &requestData, const 
     int offset = sizeof(DhcpHeader);
 
     while (offset < requestData.size()) {
-        quint8 optionCode = static_cast<quint8>(requestData.at(offset++));
+        auto optionCode = static_cast<quint8>(requestData.at(offset++));
         if (optionCode == 255) {
             break;  // END option
         }
@@ -156,7 +156,7 @@ QByteArray PxeProxyDhcp::processDhcpPacket(const QByteArray &requestData, const 
         if (offset >= requestData.size()) {
             break;
         }
-        quint8 optionLen = static_cast<quint8>(requestData.at(offset++));
+        auto optionLen = static_cast<quint8>(requestData.at(offset++));
         if (offset + optionLen > requestData.size()) {
             break;
         }
@@ -176,7 +176,7 @@ QByteArray PxeProxyDhcp::processDhcpPacket(const QByteArray &requestData, const 
 
     // Only respond to PXE Clients (DHCPDISCOVER = 1 or DHCPREQUEST = 3)
     if (!isPxeClient || (msgType != 1 && msgType != 3)) {
-        return QByteArray();
+        return {};
     }
 
     if (outClientMac) {
