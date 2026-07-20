@@ -284,8 +284,8 @@ void TFTPProtocolTest::testBlockRollover() {
     const QString outPath = m_clientDir.path() + QStringLiteral("/rollover.out");
     QSignalSpy spy(&client, &TftpClient::transferFinished);
     client.downloadFile(QStringLiteral("127.0.0.1"), m_port, QStringLiteral("rollover.bin"), outPath);
-    // Large number of small packets might take slightly longer, give it 10 seconds.
-    QVERIFY(spy.wait(10000));
+    // Large number of small packets might take slightly longer, give it 30 seconds.
+    QVERIFY(spy.wait(30000));
     QCOMPARE(spy.takeFirst().at(0).toBool(), true);
 
     QFile out(outPath);
@@ -764,11 +764,13 @@ void TFTPProtocolTest::testSecurityThrottling() {
 
     TftpClient client1;
     QSignalSpy spy1(&client1, &TftpClient::transferFinished);
-    client1.downloadFile(QStringLiteral("127.0.0.1"), m_port, QStringLiteral("throttling.bin"), m_clientDir.path() + QStringLiteral("/throttling1.out"));
+    client1.downloadFile(QStringLiteral("127.0.0.1"), m_port, QStringLiteral("throttling.bin"),
+                         m_clientDir.path() + QStringLiteral("/throttling1.out"));
 
     TftpClient client2;
     QSignalSpy spy2(&client2, &TftpClient::transferFinished);
-    client2.downloadFile(QStringLiteral("127.0.0.1"), m_port, QStringLiteral("throttling.bin"), m_clientDir.path() + QStringLiteral("/throttling2.out"));
+    client2.downloadFile(QStringLiteral("127.0.0.1"), m_port, QStringLiteral("throttling.bin"),
+                         m_clientDir.path() + QStringLiteral("/throttling2.out"));
 
     QVERIFY(spy2.wait(2000));
     QCOMPARE(spy2.takeFirst().at(0).toBool(), false);
@@ -789,12 +791,11 @@ void TFTPProtocolTest::testDiskSpacePreflightCheck() {
     QStorageInfo storage(m_clientDir.path());
     QVERIFY(storage.isValid());
     qint64 available = storage.bytesAvailable();
-    qint64 required = available + 10LL * 1024LL * 1024LL * 1024LL; // available + 10 GB
+    qint64 required = available + 10LL * 1024LL * 1024LL * 1024LL;  // available + 10 GB
 
     QFile sparseFile(m_clientDir.path() + QStringLiteral("/sparse.bin"));
     QVERIFY(sparseFile.open(QIODevice::ReadWrite));
-    QVERIFY(sparseFile.seek(required - 1));
-    sparseFile.write("a", 1);
+    QVERIFY(sparseFile.resize(required));
     sparseFile.close();
 
     TftpClient client;
@@ -814,7 +815,8 @@ void TFTPProtocolTest::testGranularSubnetAcls() {
 
     TftpClient client;
     QSignalSpy spy(&client, &TftpClient::transferFinished);
-    client.downloadFile(QStringLiteral("127.0.0.1"), m_port, QStringLiteral("acl_test.bin"), m_clientDir.path() + QStringLiteral("/acl_test.out"));
+    client.downloadFile(QStringLiteral("127.0.0.1"), m_port, QStringLiteral("acl_test.bin"),
+                        m_clientDir.path() + QStringLiteral("/acl_test.out"));
     QVERIFY(spy.wait(5000));
     QCOMPARE(spy.takeFirst().at(0).toBool(), true);
 

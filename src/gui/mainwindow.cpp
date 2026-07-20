@@ -580,11 +580,16 @@ void MainWindow::buildMenus() {
 
     QSettings langSettings;
     QString currentLang = langSettings.value(QStringLiteral("general/language"), QStringLiteral("system")).toString();
-    if (currentLang == QStringLiteral("de")) langDe->setChecked(true);
-    else if (currentLang == QStringLiteral("tr")) langTr->setChecked(true);
-    else if (currentLang == QStringLiteral("es")) langEs->setChecked(true);
-    else if (currentLang == QStringLiteral("en")) langEn->setChecked(true);
-    else langSys->setChecked(true);
+    if (currentLang == QStringLiteral("de"))
+        langDe->setChecked(true);
+    else if (currentLang == QStringLiteral("tr"))
+        langTr->setChecked(true);
+    else if (currentLang == QStringLiteral("es"))
+        langEs->setChecked(true);
+    else if (currentLang == QStringLiteral("en"))
+        langEn->setChecked(true);
+    else
+        langSys->setChecked(true);
 
     connect(langGroup, &QActionGroup::triggered, this, [this](QAction *act) {
         QString code = act->data().toString();
@@ -879,15 +884,15 @@ void MainWindow::appendLog(const QString &message) {
     if (match && m_logFilterCombo) {
         const QString severity = m_logFilterCombo->currentData().toString();
         if (severity != QLatin1String("all")) {
-            const bool isInfoFiltered = (severity == QLatin1String("info") &&
-                                         (formatted.contains(QLatin1String("error"), Qt::CaseInsensitive) ||
-                                          formatted.contains(QLatin1String("warn"), Qt::CaseInsensitive) ||
-                                          formatted.contains(QLatin1String("fail"), Qt::CaseInsensitive)));
-            const bool isWarnFiltered = (severity == QLatin1String("warn") &&
-                                         !formatted.contains(QLatin1String("warn"), Qt::CaseInsensitive));
-            const bool isErrorFiltered = (severity == QLatin1String("error") &&
-                                          !(formatted.contains(QLatin1String("error"), Qt::CaseInsensitive) ||
-                                            formatted.contains(QLatin1String("fail"), Qt::CaseInsensitive)));
+            const bool isInfoFiltered =
+                (severity == QLatin1String("info") && (formatted.contains(QLatin1String("error"), Qt::CaseInsensitive) ||
+                                                       formatted.contains(QLatin1String("warn"), Qt::CaseInsensitive) ||
+                                                       formatted.contains(QLatin1String("fail"), Qt::CaseInsensitive)));
+            const bool isWarnFiltered =
+                (severity == QLatin1String("warn") && !formatted.contains(QLatin1String("warn"), Qt::CaseInsensitive));
+            const bool isErrorFiltered =
+                (severity == QLatin1String("error") && !(formatted.contains(QLatin1String("error"), Qt::CaseInsensitive) ||
+                                                         formatted.contains(QLatin1String("fail"), Qt::CaseInsensitive)));
             if (isInfoFiltered || isWarnFiltered || isErrorFiltered) {
                 match = false;
             }
@@ -916,15 +921,13 @@ void MainWindow::filterLog() {
             }
         }
         if (match && severity != QLatin1String("all")) {
-            const bool isInfoFiltered = (severity == QLatin1String("info") &&
-                                         (line.contains(QLatin1String("error"), Qt::CaseInsensitive) ||
-                                          line.contains(QLatin1String("warn"), Qt::CaseInsensitive) ||
-                                          line.contains(QLatin1String("fail"), Qt::CaseInsensitive)));
-            const bool isWarnFiltered = (severity == QLatin1String("warn") &&
-                                         !line.contains(QLatin1String("warn"), Qt::CaseInsensitive));
-            const bool isErrorFiltered = (severity == QLatin1String("error") &&
-                                          !(line.contains(QLatin1String("error"), Qt::CaseInsensitive) ||
-                                            line.contains(QLatin1String("fail"), Qt::CaseInsensitive)));
+            const bool isInfoFiltered = (severity == QLatin1String("info") && (line.contains(QLatin1String("error"), Qt::CaseInsensitive) ||
+                                                                               line.contains(QLatin1String("warn"), Qt::CaseInsensitive) ||
+                                                                               line.contains(QLatin1String("fail"), Qt::CaseInsensitive)));
+            const bool isWarnFiltered = (severity == QLatin1String("warn") && !line.contains(QLatin1String("warn"), Qt::CaseInsensitive));
+            const bool isErrorFiltered =
+                (severity == QLatin1String("error") && !(line.contains(QLatin1String("error"), Qt::CaseInsensitive) ||
+                                                         line.contains(QLatin1String("fail"), Qt::CaseInsensitive)));
             if (isInfoFiltered || isWarnFiltered || isErrorFiltered) {
                 match = false;
             }
@@ -1418,7 +1421,8 @@ void MainWindow::deleteCurrentServerProfile() {
 
 void MainWindow::importClientProfile() {
     QString path = QFileDialog::getOpenFileName(this, tr("Import Client Profile"), QString(), tr("JSON Files (*.json)"));
-    if (path.isEmpty()) return;
+    if (path.isEmpty())
+        return;
 
     QFile file(path);
     if (!file.open(QIODevice::ReadOnly)) {
@@ -1468,8 +1472,10 @@ void MainWindow::exportClientProfile() {
     }
 
     const QString profileName = m_profileCombo->itemText(index);
-    QString path = QFileDialog::getSaveFileName(this, tr("Export Client Profile"), profileName + QStringLiteral(".json"), tr("JSON Files (*.json)"));
-    if (path.isEmpty()) return;
+    QString path =
+        QFileDialog::getSaveFileName(this, tr("Export Client Profile"), profileName + QStringLiteral(".json"), tr("JSON Files (*.json)"));
+    if (path.isEmpty())
+        return;
 
     QSettings settings;
     settings.beginGroup(QStringLiteral("profiles"));
@@ -1501,7 +1507,8 @@ void MainWindow::exportClientProfile() {
 
 void MainWindow::importServerProfile() {
     QString path = QFileDialog::getOpenFileName(this, tr("Import Server Profile"), QString(), tr("JSON Files (*.json)"));
-    if (path.isEmpty()) return;
+    if (path.isEmpty())
+        return;
 
     QFile file(path);
     if (!file.open(QIODevice::ReadOnly)) {
@@ -1534,27 +1541,32 @@ void MainWindow::importServerProfile() {
 
     QJsonArray allowedArray = server.value(QStringLiteral("allowedExts")).toArray();
     QStringList allowedList;
-    for (const auto &val : allowedArray) allowedList.append(val.toString());
+    for (const auto &val : allowedArray)
+        allowedList.append(val.toString());
     settings.setValue(QStringLiteral("allowedExts"), allowedList);
 
     QJsonArray blockedArray = server.value(QStringLiteral("blockedExts")).toArray();
     QStringList blockedList;
-    for (const auto &val : blockedArray) blockedList.append(val.toString());
+    for (const auto &val : blockedArray)
+        blockedList.append(val.toString());
     settings.setValue(QStringLiteral("blockedExts"), blockedList);
 
     QJsonArray whitelistArray = server.value(QStringLiteral("ipWhitelist")).toArray();
     QStringList whitelistList;
-    for (const auto &val : whitelistArray) whitelistList.append(val.toString());
+    for (const auto &val : whitelistArray)
+        whitelistList.append(val.toString());
     settings.setValue(QStringLiteral("ipWhitelist"), whitelistList);
 
     QJsonArray blacklistArray = server.value(QStringLiteral("ipBlacklist")).toArray();
     QStringList blacklistList;
-    for (const auto &val : blacklistArray) blacklistList.append(val.toString());
+    for (const auto &val : blacklistArray)
+        blacklistList.append(val.toString());
     settings.setValue(QStringLiteral("ipBlacklist"), blacklistList);
 
     QJsonArray roDirsArray = server.value(QStringLiteral("readOnlyDirs")).toArray();
     QStringList roDirsList;
-    for (const auto &val : roDirsArray) roDirsList.append(val.toString());
+    for (const auto &val : roDirsArray)
+        roDirsList.append(val.toString());
     settings.setValue(QStringLiteral("readOnlyDirs"), roDirsList);
 
     QJsonObject mappingsObj = server.value(QStringLiteral("virtualMappings")).toObject();
@@ -1587,8 +1599,10 @@ void MainWindow::exportServerProfile() {
     }
 
     const QString profileName = m_serverProfileCombo->itemText(index);
-    QString path = QFileDialog::getSaveFileName(this, tr("Export Server Profile"), profileName + QStringLiteral(".json"), tr("JSON Files (*.json)"));
-    if (path.isEmpty()) return;
+    QString path =
+        QFileDialog::getSaveFileName(this, tr("Export Server Profile"), profileName + QStringLiteral(".json"), tr("JSON Files (*.json)"));
+    if (path.isEmpty())
+        return;
 
     QSettings settings;
     settings.beginGroup(QStringLiteral("serverProfiles"));
@@ -1602,23 +1616,28 @@ void MainWindow::exportServerProfile() {
     server.insert(QStringLiteral("jsonLogging"), settings.value(QStringLiteral("jsonLogging"), false).toBool());
 
     QJsonArray allowedArray;
-    for (const auto &val : settings.value(QStringLiteral("allowedExts")).toStringList()) allowedArray.append(val);
+    for (const auto &val : settings.value(QStringLiteral("allowedExts")).toStringList())
+        allowedArray.append(val);
     server.insert(QStringLiteral("allowedExts"), allowedArray);
 
     QJsonArray blockedArray;
-    for (const auto &val : settings.value(QStringLiteral("blockedExts")).toStringList()) blockedArray.append(val);
+    for (const auto &val : settings.value(QStringLiteral("blockedExts")).toStringList())
+        blockedArray.append(val);
     server.insert(QStringLiteral("blockedExts"), blockedArray);
 
     QJsonArray whitelistArray;
-    for (const auto &val : settings.value(QStringLiteral("ipWhitelist")).toStringList()) whitelistArray.append(val);
+    for (const auto &val : settings.value(QStringLiteral("ipWhitelist")).toStringList())
+        whitelistArray.append(val);
     server.insert(QStringLiteral("ipWhitelist"), whitelistArray);
 
     QJsonArray blacklistArray;
-    for (const auto &val : settings.value(QStringLiteral("ipBlacklist")).toStringList()) blacklistArray.append(val);
+    for (const auto &val : settings.value(QStringLiteral("ipBlacklist")).toStringList())
+        blacklistArray.append(val);
     server.insert(QStringLiteral("ipBlacklist"), blacklistArray);
 
     QJsonArray roDirsArray;
-    for (const auto &val : settings.value(QStringLiteral("readOnlyDirs")).toStringList()) roDirsArray.append(val);
+    for (const auto &val : settings.value(QStringLiteral("readOnlyDirs")).toStringList())
+        roDirsArray.append(val);
     server.insert(QStringLiteral("readOnlyDirs"), roDirsArray);
 
     QVariantMap mappingsMap = settings.value(QStringLiteral("virtualMappings")).toMap();

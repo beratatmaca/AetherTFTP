@@ -11,12 +11,12 @@
 // plain syslog(3) API on POSIX and a no-op on Windows.
 // ---------------------------------------------------------------------------
 #ifdef AETHER_HAVE_SYSTEMD
-#  include <systemd/sd-journal.h>
-#  include <systemd/sd-daemon.h>
-#  define AETHER_JOURNAL 1
+#include <systemd/sd-journal.h>
+#include <systemd/sd-daemon.h>
+#define AETHER_JOURNAL 1
 #elif defined(Q_OS_UNIX)
-#  include <syslog.h>
-#  define AETHER_SYSLOG 1
+#include <syslog.h>
+#define AETHER_SYSLOG 1
 #endif
 
 namespace tftp {
@@ -25,39 +25,47 @@ namespace {
 
 void qlogMessageHandler(QtMsgType type, const QMessageLogContext &context, const QString &msg) {
     // Map Qt message type → systemd/syslog priority level + stderr prefix
-    int priority = 6;           // LOG_INFO
+    int priority = 6;  // LOG_INFO
     const char *levelStr = "INFO";
-    const char *sdPrefix = "<6>"; // systemd journal priority prefix for stderr
+    const char *sdPrefix = "<6>";  // systemd journal priority prefix for stderr
 
     switch (type) {
         case QtDebugMsg:
-            priority  = 7; levelStr = "DEBUG";    sdPrefix = "<7>"; break;
+            priority = 7;
+            levelStr = "DEBUG";
+            sdPrefix = "<7>";
+            break;
         case QtInfoMsg:
-            priority  = 6; levelStr = "INFO";     sdPrefix = "<6>"; break;
+            priority = 6;
+            levelStr = "INFO";
+            sdPrefix = "<6>";
+            break;
         case QtWarningMsg:
-            priority  = 4; levelStr = "WARNING";  sdPrefix = "<4>"; break;
+            priority = 4;
+            levelStr = "WARNING";
+            sdPrefix = "<4>";
+            break;
         case QtCriticalMsg:
-            priority  = 3; levelStr = "CRITICAL"; sdPrefix = "<3>"; break;
+            priority = 3;
+            levelStr = "CRITICAL";
+            sdPrefix = "<3>";
+            break;
         case QtFatalMsg:
-            priority  = 2; levelStr = "FATAL";    sdPrefix = "<2>"; break;
+            priority = 2;
+            levelStr = "FATAL";
+            sdPrefix = "<2>";
+            break;
     }
 
     const QByteArray utf8Msg = msg.toUtf8();
-    const QByteArray category =
-        context.category ? QByteArray(context.category) : QByteArray("default");
-    const QByteArray timestamp =
-        QDateTime::currentDateTimeUtc()
-            .toString(Qt::ISODateWithMs)
-            .toUtf8();
+    const QByteArray category = context.category ? QByteArray(context.category) : QByteArray("default");
+    const QByteArray timestamp = QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs).toUtf8();
 
     // -----------------------------------------------------------------------
     // 1. stderr — with systemd journal priority prefix so that journald picks
     //    up the level when the service runs with StandardError=journal.
     // -----------------------------------------------------------------------
-    std::cerr << sdPrefix
-              << '[' << timestamp.constData() << ']'
-              << " [" << levelStr << ']'
-              << " [" << category.constData() << "] "
+    std::cerr << sdPrefix << '[' << timestamp.constData() << ']' << " [" << levelStr << ']' << " [" << category.constData() << "] "
               << utf8Msg.constData() << '\n';
 
     // -----------------------------------------------------------------------
@@ -65,14 +73,8 @@ void qlogMessageHandler(QtMsgType type, const QMessageLogContext &context, const
     //     `journalctl -o json` / `journalctl -f` with full field filtering.
     // -----------------------------------------------------------------------
 #ifdef AETHER_JOURNAL
-    sd_journal_send(
-        "MESSAGE=%s",           utf8Msg.constData(),
-        "PRIORITY=%d",          priority,
-        "SYSLOG_IDENTIFIER=%s", "AetherTFTP",
-        "AETHER_CATEGORY=%s",   category.constData(),
-        "AETHER_LEVEL=%s",      levelStr,
-        "AETHER_TIMESTAMP=%s",  timestamp.constData(),
-        nullptr);
+    sd_journal_send("MESSAGE=%s", utf8Msg.constData(), "PRIORITY=%d", priority, "SYSLOG_IDENTIFIER=%s", "AetherTFTP", "AETHER_CATEGORY=%s",
+                    category.constData(), "AETHER_LEVEL=%s", levelStr, "AETHER_TIMESTAMP=%s", timestamp.constData(), nullptr);
 
     // -----------------------------------------------------------------------
     // 2b. Fallback: plain POSIX syslog (libsystemd not available)

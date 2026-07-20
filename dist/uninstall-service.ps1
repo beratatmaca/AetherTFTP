@@ -1,3 +1,4 @@
+#Requires -RunAsAdministrator
 # AetherTFTP Windows Service Uninstallation Script
 # Run as Administrator in PowerShell
 

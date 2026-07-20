@@ -8,6 +8,7 @@
 #include <QMap>
 
 class QUdpSocket;
+class QTimer;
 
 namespace tftp {
 
@@ -27,19 +28,13 @@ class MetricsExporter;
 class TftpServer : public QObject {
     Q_OBJECT
 public:
-    enum class AccessLevel {
-        Blocked = 0,
-        ReadOnly = 1,
-        ReadWrite = 2
-    };
+    enum class AccessLevel { Blocked = 0, ReadOnly = 1, ReadWrite = 2 };
 
     struct SubnetAccessRule {
         QHostAddress address;
         int prefixLength;
         AccessLevel level;
-        bool matches(const QHostAddress &ip) const {
-            return ip.isInSubnet(address, prefixLength);
-        }
+        bool matches(const QHostAddress &ip) const { return ip.isInSubnet(address, prefixLength); }
     };
     /**
      * @brief Construct an idle server.
@@ -281,6 +276,11 @@ private:
     mutable qint64 m_transfersSuccess = 0;
     mutable qint64 m_transfersFailure = 0;
     mutable qint64 m_retransmissionCount = 0;
+
+    QTimer *m_watchdogTimer = nullptr;
+
+private slots:
+    void onWatchdogTimeout();
 };
 
 }  // namespace tftp

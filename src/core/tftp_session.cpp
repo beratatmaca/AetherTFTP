@@ -66,28 +66,32 @@ struct TftpSession::WriteTask : public QRunnable {
     QPointer<TftpSession> session;
     qint64 block;
     QByteArray payload;
+    bool isNetascii;
 
-    WriteTask(TftpSession *s, qint64 b, QByteArray p) : session(s), block(b), payload(std::move(p)) { setAutoDelete(true); }
+    WriteTask(TftpSession *s, qint64 b, QByteArray p)
+        : session(s), block(b), payload(std::move(p)), isNetascii(s ? s->m_isNetascii : false) {
+        setAutoDelete(true);
+    }
 
     void run() override {
         bool ok = false;
         auto s = session;
         auto b = block;
         auto p = payload;
-        if (s) {
-            if (s->m_isNetascii) {
-                s->m_netasciiData.append(p);
-                ok = true;
-            } else if (s->m_file) {
-                ok = (s->m_file->write(p) == p.size());
-            }
+        if (isNetascii) {
+            ok = true;
+        } else if (s && s->m_file) {
+            ok = (s->m_file->write(p) == p.size());
         }
         if (s) {
             int size = p.size();
             QMetaObject::invokeMethod(
                 s.data(),
-                [s, b, size, ok]() {
+                [s, b, p, size, ok, netascii = isNetascii]() {
                     if (s) {
+                        if (netascii && ok) {
+                            s->m_netasciiData.append(p);
+                        }
                         s->onDataBlockWritten(b, size, ok);
                     }
                 },

@@ -1,19 +1,21 @@
 #include "core/tftp_server.h"
 
+#include "core/metrics_exporter.h"
+#include "core/qlog.h"
 #include "core/tftp_protocol.h"
 #include "core/tftp_session.h"
-#include "core/metrics_exporter.h"
 
-#include <QStorageInfo>
+#include <QDateTime>
+#include <QDebug>
 #include <QDir>
 #include <QFileInfo>
-#include <QUdpSocket>
 #include <QJsonDocument>
 #include <QJsonObject>
-#include <QDateTime>
-#include <QTextStream>
-#include <QDebug>
 #include <QRandomGenerator>
+#include <QStorageInfo>
+#include <QTextStream>
+#include <QTimer>
+#include <QUdpSocket>
 #include <algorithm>
 #include <cmath>
 
@@ -50,6 +52,14 @@ bool TftpServer::listen(const QHostAddress &address, quint16 port, const QString
 
     m_globalTimer.invalidate();
 
+#ifdef AETHER_HAVE_SYSTEMD
+    if (!m_watchdogTimer) {
+        m_watchdogTimer = new QTimer(this);
+        connect(m_watchdogTimer, &QTimer::timeout, this, &TftpServer::onWatchdogTimeout);
+    }
+    m_watchdogTimer->start(15000);
+#endif
+
     logEvent(QStringLiteral("server_start"), QStringLiteral("server"), address.toString(), QString(), 0, QStringLiteral("success"),
              QStringLiteral("Listening on %1:%2, serving %3").arg(address.toString()).arg(m_socket->localPort()).arg(m_rootDir));
     return true;
@@ -58,12 +68,22 @@ bool TftpServer::listen(const QHostAddress &address, quint16 port, const QString
 void TftpServer::close() {
     stopMetricsServer();
 
+#ifdef AETHER_HAVE_SYSTEMD
+    if (m_watchdogTimer) {
+        m_watchdogTimer->stop();
+    }
+#endif
+
     if (m_socket) {
         m_socket->close();
         m_socket->deleteLater();
         m_socket = nullptr;
     }
     m_sessions.clear();
+}
+
+void TftpServer::onWatchdogTimeout() {
+    tftp::notifyWatchdog();
 }
 
 bool TftpServer::isListening() const {

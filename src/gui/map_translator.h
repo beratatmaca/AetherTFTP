@@ -10,9 +10,7 @@ class MapTranslator : public QTranslator {
 public:
     explicit MapTranslator(QObject *parent = nullptr) : QTranslator(parent) {}
 
-    void addTranslation(const QString &source, const QString &translation) {
-        m_translations.insert(source, translation);
-    }
+    void addTranslation(const QString &source, const QString &translation) { m_translations.insert(source, translation); }
 
     QString translate(const char *context, const char *sourceText, const char *disambiguation = nullptr, int n = -1) const override {
         Q_UNUSED(context);
@@ -44,8 +42,10 @@ public:
             t->addTranslation("Delete Profile", "Profil löschen");
             t->addTranslation("Import Profile", "Profil importieren");
             t->addTranslation("Export Profile", "Profil exportieren");
-            t->addTranslation("Select a saved client configuration profile.", "Wählen Sie ein gespeichertes Client-Konfigurationsprofil aus.");
-            t->addTranslation("Switch the panel below between client and server configuration.", "Schalten Sie das folgende Feld zwischen Client- und Serverkonfiguration um.");
+            t->addTranslation("Select a saved client configuration profile.",
+                              "Wählen Sie ein gespeichertes Client-Konfigurationsprofil aus.");
+            t->addTranslation("Switch the panel below between client and server configuration.",
+                              "Schalten Sie das folgende Feld zwischen Client- und Serverkonfiguration um.");
         } else if (lang == QStringLiteral("tr")) {
             t->addTranslation("Client", "İstemci");
             t->addTranslation("Server", "Sunucu");
@@ -64,7 +64,8 @@ public:
             t->addTranslation("Import Profile", "Profili İçe Aktar");
             t->addTranslation("Export Profile", "Profili Dışa Aktar");
             t->addTranslation("Select a saved client configuration profile.", "Kaydedilmiş bir istemci yapılandırma profilini seçin.");
-            t->addTranslation("Switch the panel below between client and server configuration.", "Aşağıdaki paneli istemci ve sunucu yapılandırması arasında değiştirin.");
+            t->addTranslation("Switch the panel below between client and server configuration.",
+                              "Aşağıdaki paneli istemci ve sunucu yapılandırması arasında değiştirin.");
         } else if (lang == QStringLiteral("es")) {
             t->addTranslation("Client", "Cliente");
             t->addTranslation("Server", "Servidor");
@@ -83,7 +84,8 @@ public:
             t->addTranslation("Import Profile", "Importar Perfil");
             t->addTranslation("Export Profile", "Exportar Perfil");
             t->addTranslation("Select a saved client configuration profile.", "Seleccione un perfil de configuración de cliente guardado.");
-            t->addTranslation("Switch the panel below between client and server configuration.", "Cambie el panel inferior entre la configuración del cliente y del servidor.");
+            t->addTranslation("Switch the panel below between client and server configuration.",
+                              "Cambie el panel inferior entre la configuración del cliente y del servidor.");
         }
         return t;
     }
@@ -92,4 +94,4 @@ private:
     QHash<QString, QString> m_translations;
 };
 
-} // namespace tftp::gui
+}  // namespace tftp::gui

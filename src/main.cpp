@@ -55,13 +55,13 @@ VOID WINAPI ServiceMain(DWORD argc, LPTSTR *argv) {
     SetServiceStatus(g_StatusHandle, &g_ServiceStatus);
 
     int fakeArgc = 2;
-    char* fakeArgv[] = { (char*)"aethertftp.exe", (char*)"--server", NULL };
+    char *fakeArgv[] = {(char *)"aethertftp.exe", (char *)"--server", NULL};
 
     QCoreApplication app(fakeArgc, fakeArgv);
     QCoreApplication::setApplicationName(QStringLiteral("AetherTFTP"));
     QCoreApplication::setApplicationVersion(QStringLiteral(AETHER_VERSION_STRING));
 
-    tftp::CliRunner::run(app, { QStringLiteral("aethertftp.exe"), QStringLiteral("--server") });
+    tftp::CliRunner::run(app, {QStringLiteral("aethertftp.exe"), QStringLiteral("--server")});
 
     CloseHandle(g_ServiceStopEvent);
     g_ServiceStatus.dwCurrentState = SERVICE_STOPPED;
@@ -94,10 +94,7 @@ int main(int argc, char *argv[]) {
 
 #ifdef Q_OS_WIN
     if (rawArgs.contains(QStringLiteral("--service"))) {
-        SERVICE_TABLE_ENTRYW ServiceTable[] = {
-            { (LPWSTR)L"AetherTFTP", (LPSERVICE_MAIN_FUNCTIONW)ServiceMain },
-            { NULL, NULL }
-        };
+        SERVICE_TABLE_ENTRYW ServiceTable[] = {{(LPWSTR)L"AetherTFTP", (LPSERVICE_MAIN_FUNCTIONW)ServiceMain}, {NULL, NULL}};
         if (StartServiceCtrlDispatcherW(ServiceTable)) {
             return 0;
         }

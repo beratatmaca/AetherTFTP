@@ -1,3 +1,4 @@
+#Requires -RunAsAdministrator
 # AetherTFTP Windows Service Installation Script
 # Run as Administrator in PowerShell
 
