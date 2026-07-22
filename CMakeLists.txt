@@ -129,11 +129,18 @@ qt6_add_translations(aether_gui
     RESOURCE_PREFIX "/i18n"
 )
 
-# Option to automatically run lupdate before every build (OFF by default to prevent Git noise)
+# Option to automatically run lupdate before every build
 option(AUTO_UPDATE_TRANSLATIONS "Run lupdate automatically before every build" ON)
 if(AUTO_UPDATE_TRANSLATIONS)
-    # Ensure lupdate runs before lrelease compiles the .qm files
-    add_dependencies(aether_gui_lrelease update_translations)
+    if(TARGET aether_gui_lupdate)
+        if(TARGET aether_gui_lrelease)
+            add_dependencies(aether_gui_lrelease aether_gui_lupdate)
+        else()
+            add_dependencies(aether_gui aether_gui_lupdate)
+        endif()
+    elseif(TARGET update_translations AND TARGET aether_gui_lrelease)
+        add_dependencies(aether_gui_lrelease update_translations)
+    endif()
 endif()
 
 

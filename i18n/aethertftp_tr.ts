@@ -5,7 +5,7 @@
     <name>tftp::gui::MainWindow</name>
     <message>
         <location filename="../src/gui/mainwindow.cpp" line="104"/>
-        <location filename="../src/gui/mainwindow.cpp" line="1359"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1361"/>
         <source>Ready. Drag files onto the window to upload.</source>
         <translation>Hazır. Dosyaları yüklemek için pencereye sürükleyin.</translation>
     </message>
@@ -32,8 +32,8 @@
     <message>
         <location filename="../src/gui/mainwindow.cpp" line="173"/>
         <location filename="../src/gui/mainwindow.cpp" line="266"/>
-        <location filename="../src/gui/mainwindow.cpp" line="1368"/>
-        <location filename="../src/gui/mainwindow.cpp" line="1458"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1370"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1460"/>
         <source>&lt;Default Settings&gt;</source>
         <translation>&lt;Varsayılan Ayarlar&gt;</translation>
     </message>
@@ -204,13 +204,13 @@ For downloads: the remote file name to fetch.</source>
     </message>
     <message>
         <location filename="../src/gui/mainwindow.cpp" line="285"/>
-        <location filename="../src/gui/mainwindow.cpp" line="715"/>
+        <location filename="../src/gui/mainwindow.cpp" line="716"/>
         <source>● Stopped</source>
         <translation>● Durduruldu</translation>
     </message>
     <message>
         <location filename="../src/gui/mainwindow.cpp" line="287"/>
-        <location filename="../src/gui/mainwindow.cpp" line="717"/>
+        <location filename="../src/gui/mainwindow.cpp" line="718"/>
         <source>&amp;Start Server</source>
         <translation>Sunucuyu Başlat</translation>
     </message>
@@ -642,176 +642,176 @@ For downloads: the remote file name to fetch.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="681"/>
+        <location filename="../src/gui/mainwindow.cpp" line="682"/>
         <source>Could not load translation for &quot;%1&quot;; showing English instead.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="685"/>
+        <location filename="../src/gui/mainwindow.cpp" line="686"/>
         <source>&amp;Profiles</source>
         <translation>Profiller</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="686"/>
+        <location filename="../src/gui/mainwindow.cpp" line="687"/>
         <source>Import &amp;Client Profile…</source>
         <translation>Müşteri Profilini İçe Aktar…</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="687"/>
+        <location filename="../src/gui/mainwindow.cpp" line="688"/>
         <source>Export C&amp;lient Profile…</source>
         <translation>Müşteri Profilini Dışa Aktar…</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="689"/>
+        <location filename="../src/gui/mainwindow.cpp" line="690"/>
         <source>Import &amp;Server Profile…</source>
         <translation>Sunucu Profilini İçe Aktar…</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="690"/>
+        <location filename="../src/gui/mainwindow.cpp" line="691"/>
         <source>Export S&amp;erver Profile…</source>
         <translation>Sunucu Profilini Dışa Aktar…</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="697"/>
+        <location filename="../src/gui/mainwindow.cpp" line="698"/>
         <source>&amp;Help</source>
         <translation>Yardım</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="698"/>
+        <location filename="../src/gui/mainwindow.cpp" line="699"/>
         <source>&amp;About AetherTFTP…</source>
         <translation>AetherTFTP Hakkında…</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="701"/>
+        <location filename="../src/gui/mainwindow.cpp" line="702"/>
         <source>About AetherTFTP</source>
         <translation>AetherTFTP Hakkında</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="702"/>
+        <location filename="../src/gui/mainwindow.cpp" line="703"/>
         <source>&lt;h3&gt;AetherTFTP %1&lt;/h3&gt;&lt;p&gt;A modern, lightweight, open-source cross-platform TFTP client and server.&lt;/p&gt;&lt;p&gt;Built with &lt;b&gt;Qt %2&lt;/b&gt; and C++17.&lt;/p&gt;&lt;p&gt;GitHub Page: &lt;a href=&quot;https://github.com/beratatmaca/AetherTFTP&quot;&gt;github.com/beratatmaca/AetherTFTP&lt;/a&gt;&lt;/p&gt;&lt;p&gt;License: &lt;b&gt;MIT&lt;/b&gt; &amp;nbsp;·&amp;nbsp; Copyright &amp;copy; 2026 AetherTFTP Project&lt;/p&gt;</source>
         <translation>&lt;h3&gt;AetherTFTP %1&lt;/h3&gt;&lt;p&gt;Modern, hafif, açık kaynaklı, platformlar arası bir TFTP istemcisi ve sunucusu.&lt;/p&gt;&lt;p&gt;&lt;b&gt;Qt %2&lt;/b&gt; ve C++17 ile oluşturulmuştur.&lt;/p&gt;&lt;p&gt;GitHub Sayfası: &lt;a href=&quot;https://github.com/beratatmaca/AetherTFTP&quot;&gt;github.com/beratatmaca/AetherTFTP&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Lisans: &lt;b&gt;MIT&lt;/b&gt; nbsp;·nbsp; Telif hakkı kopyası; 2026 AetherTFTP Projesi&lt;/p&gt;</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="719"/>
-        <location filename="../src/gui/mainwindow.cpp" line="1290"/>
+        <location filename="../src/gui/mainwindow.cpp" line="720"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1292"/>
         <source>Start Server</source>
         <translation>Sunucuyu Başlat</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="722"/>
+        <location filename="../src/gui/mainwindow.cpp" line="723"/>
         <source>Server stopped.</source>
         <translation>Sunucu durduruldu.</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="739"/>
+        <location filename="../src/gui/mainwindow.cpp" line="740"/>
         <source>Failed to start server: %1</source>
         <translation>Sunucu başlatılamadı: %1</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="743"/>
-        <location filename="../src/gui/mainwindow.cpp" line="1354"/>
+        <location filename="../src/gui/mainwindow.cpp" line="744"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1356"/>
         <source>● Listening on port %1</source>
         <translation>● %1 bağlantı noktasında dinleniliyor</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="745"/>
-        <location filename="../src/gui/mainwindow.cpp" line="1353"/>
+        <location filename="../src/gui/mainwindow.cpp" line="746"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1355"/>
         <source>Sto&amp;p Server</source>
         <translation>Sunucuyu Durdur</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="747"/>
-        <location filename="../src/gui/mainwindow.cpp" line="1290"/>
+        <location filename="../src/gui/mainwindow.cpp" line="748"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1292"/>
         <source>Stop Server</source>
         <translation>Sunucuyu Durdur</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="749"/>
+        <location filename="../src/gui/mainwindow.cpp" line="750"/>
         <source>Server listening on port %1.</source>
         <translation>Sunucu %1 bağlantı noktasını dinliyor.</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="757"/>
+        <location filename="../src/gui/mainwindow.cpp" line="758"/>
         <source>Select Root Directory</source>
         <translation>Kök Dizini Seçin</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="833"/>
+        <location filename="../src/gui/mainwindow.cpp" line="834"/>
         <source>Select file to upload</source>
         <translation>Yüklenecek dosyayı seçin</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="842"/>
+        <location filename="../src/gui/mainwindow.cpp" line="843"/>
         <source>Upload needs both a host and a local file.</source>
         <translation>Yükleme için hem bir ana makineye hem de yerel bir dosyaya ihtiyaç vardır.</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="846"/>
+        <location filename="../src/gui/mainwindow.cpp" line="847"/>
         <source>Local file not found: %1</source>
         <translation>Yerel dosya bulunamadı: %1</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="856"/>
+        <location filename="../src/gui/mainwindow.cpp" line="857"/>
         <source>Download needs both a host and a remote file name.</source>
         <translation>İndirme işlemi için hem bir ana bilgisayar hem de uzak bir dosya adı gerekir.</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="860"/>
+        <location filename="../src/gui/mainwindow.cpp" line="861"/>
         <source>Save downloaded file as</source>
         <translation>İndirilen dosyayı farklı kaydet</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="921"/>
+        <location filename="../src/gui/mainwindow.cpp" line="922"/>
         <source>%1 %2…</source>
         <translation>%1 %2…</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="921"/>
+        <location filename="../src/gui/mainwindow.cpp" line="922"/>
         <source>Uploading</source>
         <translation>Yükleniyor</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="921"/>
+        <location filename="../src/gui/mainwindow.cpp" line="922"/>
         <source>Downloading</source>
         <translation>İndiriliyor</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="939"/>
+        <location filename="../src/gui/mainwindow.cpp" line="940"/>
         <source>Transfer cancelled.</source>
         <translation>Aktarım iptal edildi.</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="947"/>
+        <location filename="../src/gui/mainwindow.cpp" line="948"/>
         <source>Queued transfer cancelled.</source>
         <translation>Sıraya alınan aktarım iptal edildi.</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="956"/>
+        <location filename="../src/gui/mainwindow.cpp" line="957"/>
         <source>Cleared finished transfers.</source>
         <translation>Biten transferler temizlendi.</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="1052"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1053"/>
         <source>Enter a host before dropping files to upload.</source>
         <translation>Yüklenecek dosyaları bırakmadan önce bir ana makine girin.</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="1259"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1260"/>
         <source>AetherTFTP</source>
         <translation>eterTFTP</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="1260"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1261"/>
         <source>AetherTFTP is running in the system tray. Use the tray icon to restore or quit the application.</source>
         <translation>AetherTFTP sistem tepsisinde çalışıyor. Uygulamayı geri yüklemek veya uygulamadan çıkmak için tepsi simgesini kullanın.</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="1283"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1285"/>
         <source>Show Window</source>
         <translation>Pencereyi Göster</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="1296"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1298"/>
         <source>Quit</source>
         <translation>Çıkış yapmak</translation>
     </message>
@@ -820,146 +820,146 @@ For downloads: the remote file name to fetch.</source>
         <translation type="vanished">%1 bağlantı noktasında çalışıyor</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="1408"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1410"/>
         <source>Save Profile</source>
         <translation>Profili Kaydet</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="1408"/>
-        <location filename="../src/gui/mainwindow.cpp" line="1547"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1410"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1549"/>
         <source>Enter profile name:</source>
         <translation>Profil adını girin:</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="1435"/>
-        <location filename="../src/gui/mainwindow.cpp" line="1440"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1437"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1442"/>
         <source>Delete Profile</source>
         <translation>Profili Sil</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="1435"/>
-        <location filename="../src/gui/mainwindow.cpp" line="1597"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1437"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1599"/>
         <source>Cannot delete the default settings profile.</source>
         <translation>Varsayılan ayarlar profili silinemiyor.</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="1440"/>
-        <location filename="../src/gui/mainwindow.cpp" line="1602"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1442"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1604"/>
         <source>Are you sure you want to delete profile &apos;%1&apos;?</source>
         <translation>&apos;%1&apos; profilini silmek istediğinizden emin misiniz?</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="1547"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1549"/>
         <source>Save Server Profile</source>
         <translation>Sunucu Profilini Kaydet</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="1597"/>
-        <location filename="../src/gui/mainwindow.cpp" line="1602"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1599"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1604"/>
         <source>Delete Server Profile</source>
         <translation>Sunucu Profilini Sil</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="1616"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1618"/>
         <source>Import Client Profile</source>
         <translation>Müşteri Profilini İçe Aktar</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="1616"/>
-        <location filename="../src/gui/mainwindow.cpp" line="1669"/>
-        <location filename="../src/gui/mainwindow.cpp" line="1702"/>
-        <location filename="../src/gui/mainwindow.cpp" line="1801"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1618"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1671"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1704"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1803"/>
         <source>JSON Files (*.json)</source>
         <translation>JSON Dosyaları (*.json)</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="1622"/>
-        <location filename="../src/gui/mainwindow.cpp" line="1628"/>
-        <location filename="../src/gui/mainwindow.cpp" line="1635"/>
-        <location filename="../src/gui/mainwindow.cpp" line="1657"/>
-        <location filename="../src/gui/mainwindow.cpp" line="1708"/>
-        <location filename="../src/gui/mainwindow.cpp" line="1714"/>
-        <location filename="../src/gui/mainwindow.cpp" line="1721"/>
-        <location filename="../src/gui/mainwindow.cpp" line="1789"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1624"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1630"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1637"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1659"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1710"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1716"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1723"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1791"/>
         <source>Import Profile</source>
         <translation>Profili İçe Aktar</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="1622"/>
-        <location filename="../src/gui/mainwindow.cpp" line="1708"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1624"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1710"/>
         <source>Failed to open file for reading.</source>
         <translation>Dosya okumak için açılamadı.</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="1628"/>
-        <location filename="../src/gui/mainwindow.cpp" line="1714"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1630"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1716"/>
         <source>Invalid profile JSON format.</source>
         <translation>Geçersiz profil JSON biçimi.</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="1635"/>
-        <location filename="../src/gui/mainwindow.cpp" line="1721"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1637"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1723"/>
         <source>Missing profileName field.</source>
         <translation>ProfilAdı alanı eksik.</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="1657"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1659"/>
         <source>Profile &apos;%1&apos; imported successfully.</source>
         <translation>&apos;%1&apos; profili başarıyla içe aktarıldı.</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="1663"/>
-        <location filename="../src/gui/mainwindow.cpp" line="1692"/>
-        <location filename="../src/gui/mainwindow.cpp" line="1698"/>
-        <location filename="../src/gui/mainwindow.cpp" line="1795"/>
-        <location filename="../src/gui/mainwindow.cpp" line="1866"/>
-        <location filename="../src/gui/mainwindow.cpp" line="1872"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1665"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1694"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1700"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1797"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1868"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1874"/>
         <source>Export Profile</source>
         <translation>Profili Dışa Aktar</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="1663"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1665"/>
         <source>Please select a profile to export (Default settings cannot be exported).</source>
         <translation>Lütfen dışa aktarılacak bir profil seçin (Varsayılan ayarlar dışa aktarılamaz).</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="1669"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1671"/>
         <source>Export Client Profile</source>
         <translation>Müşteri Profilini Dışa Aktar</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="1692"/>
-        <location filename="../src/gui/mainwindow.cpp" line="1866"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1694"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1868"/>
         <source>Failed to open file for writing.</source>
         <translation>Dosya yazmak için açılamadı.</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="1698"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1700"/>
         <source>Profile &apos;%1&apos; exported successfully.</source>
         <translation>&apos;%1&apos; profili başarıyla dışa aktarıldı.</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="1702"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1704"/>
         <source>Import Server Profile</source>
         <translation>Sunucu Profilini İçe Aktar</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="1789"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1791"/>
         <source>Server profile &apos;%1&apos; imported successfully.</source>
         <translation>Sunucu profili &apos;%1&apos; başarıyla içe aktarıldı.</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="1795"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1797"/>
         <source>Please select a profile to export.</source>
         <translation>Lütfen dışa aktarılacak bir profil seçin.</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="1801"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1803"/>
         <source>Export Server Profile</source>
         <translation>Sunucu Profilini Dışa Aktar</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="1872"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1874"/>
         <source>Server profile &apos;%1&apos; exported successfully.</source>
         <translation>&apos;%1&apos; sunucu profili başarıyla dışa aktarıldı.</translation>
     </message>

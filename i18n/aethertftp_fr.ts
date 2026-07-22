@@ -5,7 +5,7 @@
     <name>tftp::gui::MainWindow</name>
     <message>
         <location filename="../src/gui/mainwindow.cpp" line="104"/>
-        <location filename="../src/gui/mainwindow.cpp" line="1359"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1361"/>
         <source>Ready. Drag files onto the window to upload.</source>
         <translation>Prêt. Faites glisser les fichiers sur la fenêtre pour les télécharger.</translation>
     </message>
@@ -32,8 +32,8 @@
     <message>
         <location filename="../src/gui/mainwindow.cpp" line="173"/>
         <location filename="../src/gui/mainwindow.cpp" line="266"/>
-        <location filename="../src/gui/mainwindow.cpp" line="1368"/>
-        <location filename="../src/gui/mainwindow.cpp" line="1458"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1370"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1460"/>
         <source>&lt;Default Settings&gt;</source>
         <translation>&lt;Paramètres par défaut&gt;</translation>
     </message>
@@ -204,13 +204,13 @@ Pour les téléchargements&#xa0;: le nom du fichier distant à récupérer.</tra
     </message>
     <message>
         <location filename="../src/gui/mainwindow.cpp" line="285"/>
-        <location filename="../src/gui/mainwindow.cpp" line="715"/>
+        <location filename="../src/gui/mainwindow.cpp" line="716"/>
         <source>● Stopped</source>
         <translation>● Arrêté</translation>
     </message>
     <message>
         <location filename="../src/gui/mainwindow.cpp" line="287"/>
-        <location filename="../src/gui/mainwindow.cpp" line="717"/>
+        <location filename="../src/gui/mainwindow.cpp" line="718"/>
         <source>&amp;Start Server</source>
         <translation>Démarrer le serveur</translation>
     </message>
@@ -642,176 +642,176 @@ Pour les téléchargements&#xa0;: le nom du fichier distant à récupérer.</tra
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="681"/>
+        <location filename="../src/gui/mainwindow.cpp" line="682"/>
         <source>Could not load translation for &quot;%1&quot;; showing English instead.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="685"/>
+        <location filename="../src/gui/mainwindow.cpp" line="686"/>
         <source>&amp;Profiles</source>
         <translation>Profils</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="686"/>
+        <location filename="../src/gui/mainwindow.cpp" line="687"/>
         <source>Import &amp;Client Profile…</source>
         <translation>Importer le profil client…</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="687"/>
+        <location filename="../src/gui/mainwindow.cpp" line="688"/>
         <source>Export C&amp;lient Profile…</source>
         <translation>Exporter le profil client…</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="689"/>
+        <location filename="../src/gui/mainwindow.cpp" line="690"/>
         <source>Import &amp;Server Profile…</source>
         <translation>Importer le profil du serveur…</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="690"/>
+        <location filename="../src/gui/mainwindow.cpp" line="691"/>
         <source>Export S&amp;erver Profile…</source>
         <translation>Exporter le profil du serveur…</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="697"/>
+        <location filename="../src/gui/mainwindow.cpp" line="698"/>
         <source>&amp;Help</source>
         <translation>Aide</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="698"/>
+        <location filename="../src/gui/mainwindow.cpp" line="699"/>
         <source>&amp;About AetherTFTP…</source>
         <translation>À propos d’AetherTFTP…</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="701"/>
+        <location filename="../src/gui/mainwindow.cpp" line="702"/>
         <source>About AetherTFTP</source>
         <translation>À propos d&apos;AetherTFTP</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="702"/>
+        <location filename="../src/gui/mainwindow.cpp" line="703"/>
         <source>&lt;h3&gt;AetherTFTP %1&lt;/h3&gt;&lt;p&gt;A modern, lightweight, open-source cross-platform TFTP client and server.&lt;/p&gt;&lt;p&gt;Built with &lt;b&gt;Qt %2&lt;/b&gt; and C++17.&lt;/p&gt;&lt;p&gt;GitHub Page: &lt;a href=&quot;https://github.com/beratatmaca/AetherTFTP&quot;&gt;github.com/beratatmaca/AetherTFTP&lt;/a&gt;&lt;/p&gt;&lt;p&gt;License: &lt;b&gt;MIT&lt;/b&gt; &amp;nbsp;·&amp;nbsp; Copyright &amp;copy; 2026 AetherTFTP Project&lt;/p&gt;</source>
         <translation>&lt;h3&gt;AetherTFTP %1&lt;/h3&gt;&lt;p&gt;Un client et serveur TFTP multiplateforme open source, moderne, léger.&lt;/p&gt;&lt;p&gt;Construit avec &lt;b&gt;Qt %2&lt;/b&gt; et C++17.&lt;/p&gt;&lt;p&gt;Page GitHub&#xa0;: &lt;a href=&quot;https://github.com/beratatmaca/AetherTFTP&quot;&gt;github.com/beratatmaca/AetherTFTP&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Licence&#xa0;: &lt;b&gt;MIT&lt;/b&gt; nbsp;·nbsp; Copie de droits d&apos;auteur&#xa0;; Projet AetherTFTP 2026&lt;/p&gt;</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="719"/>
-        <location filename="../src/gui/mainwindow.cpp" line="1290"/>
+        <location filename="../src/gui/mainwindow.cpp" line="720"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1292"/>
         <source>Start Server</source>
         <translation>Démarrer le serveur</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="722"/>
+        <location filename="../src/gui/mainwindow.cpp" line="723"/>
         <source>Server stopped.</source>
         <translation>Le serveur s&apos;est arrêté.</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="739"/>
+        <location filename="../src/gui/mainwindow.cpp" line="740"/>
         <source>Failed to start server: %1</source>
         <translation>Échec du démarrage du serveur&#xa0;: %1</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="743"/>
-        <location filename="../src/gui/mainwindow.cpp" line="1354"/>
+        <location filename="../src/gui/mainwindow.cpp" line="744"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1356"/>
         <source>● Listening on port %1</source>
         <translation>● Écoute sur le port %1</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="745"/>
-        <location filename="../src/gui/mainwindow.cpp" line="1353"/>
+        <location filename="../src/gui/mainwindow.cpp" line="746"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1355"/>
         <source>Sto&amp;p Server</source>
         <translation>Arrêter le serveur</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="747"/>
-        <location filename="../src/gui/mainwindow.cpp" line="1290"/>
+        <location filename="../src/gui/mainwindow.cpp" line="748"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1292"/>
         <source>Stop Server</source>
         <translation>Arrêter le serveur</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="749"/>
+        <location filename="../src/gui/mainwindow.cpp" line="750"/>
         <source>Server listening on port %1.</source>
         <translation>Serveur en écoute sur le port %1.</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="757"/>
+        <location filename="../src/gui/mainwindow.cpp" line="758"/>
         <source>Select Root Directory</source>
         <translation>Sélectionnez le répertoire racine</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="833"/>
+        <location filename="../src/gui/mainwindow.cpp" line="834"/>
         <source>Select file to upload</source>
         <translation>Sélectionnez le fichier à télécharger</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="842"/>
+        <location filename="../src/gui/mainwindow.cpp" line="843"/>
         <source>Upload needs both a host and a local file.</source>
         <translation>Le téléchargement nécessite à la fois un hôte et un fichier local.</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="846"/>
+        <location filename="../src/gui/mainwindow.cpp" line="847"/>
         <source>Local file not found: %1</source>
         <translation>Fichier local introuvable&#xa0;: %1</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="856"/>
+        <location filename="../src/gui/mainwindow.cpp" line="857"/>
         <source>Download needs both a host and a remote file name.</source>
         <translation>Le téléchargement nécessite à la fois un hôte et un nom de fichier distant.</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="860"/>
+        <location filename="../src/gui/mainwindow.cpp" line="861"/>
         <source>Save downloaded file as</source>
         <translation>Enregistrer le fichier téléchargé sous</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="921"/>
+        <location filename="../src/gui/mainwindow.cpp" line="922"/>
         <source>%1 %2…</source>
         <translation>%1 %2…</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="921"/>
+        <location filename="../src/gui/mainwindow.cpp" line="922"/>
         <source>Uploading</source>
         <translation>Téléchargement</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="921"/>
+        <location filename="../src/gui/mainwindow.cpp" line="922"/>
         <source>Downloading</source>
         <translation>Téléchargement</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="939"/>
+        <location filename="../src/gui/mainwindow.cpp" line="940"/>
         <source>Transfer cancelled.</source>
         <translation>Transfert annulé.</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="947"/>
+        <location filename="../src/gui/mainwindow.cpp" line="948"/>
         <source>Queued transfer cancelled.</source>
         <translation>Transfert en file d&apos;attente annulé.</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="956"/>
+        <location filename="../src/gui/mainwindow.cpp" line="957"/>
         <source>Cleared finished transfers.</source>
         <translation>Transferts terminés effacés.</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="1052"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1053"/>
         <source>Enter a host before dropping files to upload.</source>
         <translation>Entrez un hôte avant de déposer les fichiers à télécharger.</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="1259"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1260"/>
         <source>AetherTFTP</source>
         <translation>ÉtherTFTP</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="1260"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1261"/>
         <source>AetherTFTP is running in the system tray. Use the tray icon to restore or quit the application.</source>
         <translation>AetherTFTP est en cours d&apos;exécution dans la barre d&apos;état système. Utilisez l&apos;icône de la barre d&apos;état pour restaurer ou quitter l&apos;application.</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="1283"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1285"/>
         <source>Show Window</source>
         <translation>Afficher la fenêtre</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="1296"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1298"/>
         <source>Quit</source>
         <translation>Quitter</translation>
     </message>
@@ -820,146 +820,146 @@ Pour les téléchargements&#xa0;: le nom du fichier distant à récupérer.</tra
         <translation type="vanished">Exécuté sur le port %1</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="1408"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1410"/>
         <source>Save Profile</source>
         <translation>Enregistrer le profil</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="1408"/>
-        <location filename="../src/gui/mainwindow.cpp" line="1547"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1410"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1549"/>
         <source>Enter profile name:</source>
         <translation>Entrez le nom du profil&#xa0;:</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="1435"/>
-        <location filename="../src/gui/mainwindow.cpp" line="1440"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1437"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1442"/>
         <source>Delete Profile</source>
         <translation>Supprimer le profil</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="1435"/>
-        <location filename="../src/gui/mainwindow.cpp" line="1597"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1437"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1599"/>
         <source>Cannot delete the default settings profile.</source>
         <translation>Impossible de supprimer le profil de paramètres par défaut.</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="1440"/>
-        <location filename="../src/gui/mainwindow.cpp" line="1602"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1442"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1604"/>
         <source>Are you sure you want to delete profile &apos;%1&apos;?</source>
         <translation>Êtes-vous sûr de vouloir supprimer le profil &apos;%1&apos; ?</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="1547"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1549"/>
         <source>Save Server Profile</source>
         <translation>Enregistrer le profil du serveur</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="1597"/>
-        <location filename="../src/gui/mainwindow.cpp" line="1602"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1599"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1604"/>
         <source>Delete Server Profile</source>
         <translation>Supprimer le profil du serveur</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="1616"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1618"/>
         <source>Import Client Profile</source>
         <translation>Importer le profil client</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="1616"/>
-        <location filename="../src/gui/mainwindow.cpp" line="1669"/>
-        <location filename="../src/gui/mainwindow.cpp" line="1702"/>
-        <location filename="../src/gui/mainwindow.cpp" line="1801"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1618"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1671"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1704"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1803"/>
         <source>JSON Files (*.json)</source>
         <translation>Fichiers JSON (*.json)</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="1622"/>
-        <location filename="../src/gui/mainwindow.cpp" line="1628"/>
-        <location filename="../src/gui/mainwindow.cpp" line="1635"/>
-        <location filename="../src/gui/mainwindow.cpp" line="1657"/>
-        <location filename="../src/gui/mainwindow.cpp" line="1708"/>
-        <location filename="../src/gui/mainwindow.cpp" line="1714"/>
-        <location filename="../src/gui/mainwindow.cpp" line="1721"/>
-        <location filename="../src/gui/mainwindow.cpp" line="1789"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1624"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1630"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1637"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1659"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1710"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1716"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1723"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1791"/>
         <source>Import Profile</source>
         <translation>Importer un profil</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="1622"/>
-        <location filename="../src/gui/mainwindow.cpp" line="1708"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1624"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1710"/>
         <source>Failed to open file for reading.</source>
         <translation>Échec de l&apos;ouverture du fichier en lecture.</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="1628"/>
-        <location filename="../src/gui/mainwindow.cpp" line="1714"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1630"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1716"/>
         <source>Invalid profile JSON format.</source>
         <translation>Format JSON de profil non valide.</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="1635"/>
-        <location filename="../src/gui/mainwindow.cpp" line="1721"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1637"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1723"/>
         <source>Missing profileName field.</source>
         <translation>Champ ProfileName manquant.</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="1657"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1659"/>
         <source>Profile &apos;%1&apos; imported successfully.</source>
         <translation>Le profil &apos;%1&apos; a été importé avec succès.</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="1663"/>
-        <location filename="../src/gui/mainwindow.cpp" line="1692"/>
-        <location filename="../src/gui/mainwindow.cpp" line="1698"/>
-        <location filename="../src/gui/mainwindow.cpp" line="1795"/>
-        <location filename="../src/gui/mainwindow.cpp" line="1866"/>
-        <location filename="../src/gui/mainwindow.cpp" line="1872"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1665"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1694"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1700"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1797"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1868"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1874"/>
         <source>Export Profile</source>
         <translation>Exporter le profil</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="1663"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1665"/>
         <source>Please select a profile to export (Default settings cannot be exported).</source>
         <translation>Veuillez sélectionner un profil à exporter (les paramètres par défaut ne peuvent pas être exportés).</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="1669"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1671"/>
         <source>Export Client Profile</source>
         <translation>Exporter le profil client</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="1692"/>
-        <location filename="../src/gui/mainwindow.cpp" line="1866"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1694"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1868"/>
         <source>Failed to open file for writing.</source>
         <translation>Échec de l&apos;ouverture du fichier en écriture.</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="1698"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1700"/>
         <source>Profile &apos;%1&apos; exported successfully.</source>
         <translation>Le profil &apos;%1&apos; a été exporté avec succès.</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="1702"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1704"/>
         <source>Import Server Profile</source>
         <translation>Importer le profil du serveur</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="1789"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1791"/>
         <source>Server profile &apos;%1&apos; imported successfully.</source>
         <translation>Le profil de serveur &apos;%1&apos; a été importé avec succès.</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="1795"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1797"/>
         <source>Please select a profile to export.</source>
         <translation>Veuillez sélectionner un profil à exporter.</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="1801"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1803"/>
         <source>Export Server Profile</source>
         <translation>Exporter le profil du serveur</translation>
     </message>
     <message>
-        <location filename="../src/gui/mainwindow.cpp" line="1872"/>
+        <location filename="../src/gui/mainwindow.cpp" line="1874"/>
         <source>Server profile &apos;%1&apos; exported successfully.</source>
         <translation>Le profil de serveur &apos;%1&apos; a été exporté avec succès.</translation>
     </message>
