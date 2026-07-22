@@ -68,7 +68,6 @@ jobs:
         uses: jurplel/install-qt-action@v3
         with:
           version: "6.6.3"
-          modules: "qttools qttranslations"
           cache: false
 
       # Linux Setup & Compilation
