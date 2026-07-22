@@ -252,11 +252,7 @@ void TftpClient::handleData(quint16 block, const QByteArray &payload) {
         return;
     }
 
-    // A legitimate new block arrived, so this exchange succeeded — reset the
-    // retry budget. Without this, m_retries accumulates across the whole
-    // download (it's only ever reset by begin()/OACK), so occasional
-    // transient packet loss on unrelated earlier blocks eats into the retry
-    // budget for later blocks and can abort an otherwise-healthy transfer.
+    // Reset the per-block retry budget; otherwise it's a whole-download total (only reset by begin()/OACK).
     m_retries = 0;
 
     QByteArray finalPayload = payload;

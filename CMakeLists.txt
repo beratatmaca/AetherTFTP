@@ -25,8 +25,7 @@ if(BUILD_COVERAGE)
     endif()
 endif()
 
-# Sanitizer instrumentation. Accepts: address, undefined, address+undefined,
-# or thread. Applied to all targets, so configure must run before any target.
+# Applied to all targets, so configure must run before any target.
 set(AETHER_SANITIZER "" CACHE STRING
     "Sanitizer(s) to enable: address, undefined, address+undefined, thread")
 if(AETHER_SANITIZER)
@@ -45,20 +44,9 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
 endif()
 
-find_package(Qt6 REQUIRED COMPONENTS Core Network Widgets)
+find_package(Qt6 REQUIRED COMPONENTS Core Network Widgets LinguistTools)
 
-# Prebuilt Qt 6 for macOS can emit a spurious link to Apple's long-removed AGL
-# framework (pulled in transitively via Qt6::Gui / WrapOpenGL), which breaks
-# linking on current macOS SDKs with: "ld: framework 'AGL' not found". We never
-# use AGL, so handle it two ways:
-#   1. Best-effort: rewrite any reachable AGL reference in Qt's imported targets
-#      to the still-present OpenGL framework.
-#   2. Guaranteed: provide a stub AGL.framework on the framework search path so
-#      the stray "-framework AGL" directive links regardless of its origin. The
-#      stub's install_name points at the real (still-present) OpenGL framework,
-#      so the recorded runtime dependency resolves on any macOS — no dangling
-#      @rpath load command. We reference no AGL symbols, so the empty stub is
-#      sufficient.
+# Prebuilt Qt 6 for macOS can emit a spurious link to Apple's long-removed AGL framework; rewrite it, and provide a stub as a fallback.
 if(APPLE)
     foreach(_qt_target Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Network WrapOpenGL::WrapOpenGL Qt6::OpenGL)
         if(TARGET ${_qt_target})
@@ -129,6 +117,25 @@ add_library(aether_gui STATIC
     src/gui/resources.qrc
 )
 target_link_libraries(aether_gui PUBLIC aether_core Qt6::Core Qt6::Widgets)
+
+qt6_add_translations(aether_gui
+    TS_FILES
+        i18n/aethertftp_hi.ts
+        i18n/aethertftp_fr.ts
+        i18n/aethertftp_de.ts
+        i18n/aethertftp_es.ts
+        i18n/aethertftp_tr.ts
+        i18n/aethertftp_pl.ts
+    RESOURCE_PREFIX "/i18n"
+)
+
+# Option to automatically run lupdate before every build (OFF by default to prevent Git noise)
+option(AUTO_UPDATE_TRANSLATIONS "Run lupdate automatically before every build" ON)
+if(AUTO_UPDATE_TRANSLATIONS)
+    # Ensure lupdate runs before lrelease compiles the .qm files
+    add_dependencies(aether_gui_lrelease update_translations)
+endif()
+
 
 if(APPLE)
     add_executable(aethertftp MACOSX_BUNDLE src/main.cpp)

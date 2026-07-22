@@ -33,11 +33,7 @@ apps:
     command: usr/local/bin/aethertftp
     extensions: [ kde-neon-6 ]
     environment:
-      # The kde-neon-6 extension's desktop-launch script force-exports
-      # QT_QPA_PLATFORM=wayland-egl on Wayland sessions, overriding the value
-      # below, unless DISABLE_WAYLAND is set. Without this the app segfaults
-      # on Wayland hosts where wayland-egl fails to load. See the launcher's
-      # `if [[ -n "$XDG_RUNTIME_DIR" && -z "$DISABLE_WAYLAND" ]]` gate.
+      # Without DISABLE_WAYLAND, kde-neon-6's launcher force-exports wayland-egl and the app segfaults on Wayland hosts.
       DISABLE_WAYLAND: "1"
       QT_QPA_PLATFORM: "wayland;xcb"
     plugs:

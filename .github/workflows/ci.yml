@@ -25,7 +25,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install tools
-        run: sudo apt-get update && sudo apt-get install -y clang-format cmake qt6-base-dev
+        run: sudo apt-get update && sudo apt-get install -y clang-format cmake qt6-base-dev qt6-l10n-tools qt6-tools-dev
       - name: Configure
         run: cmake -S . -B build -DBUILD_TESTING=OFF
       - name: Check formatting
@@ -40,7 +40,7 @@ jobs:
       - name: Install tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake qt6-base-dev doxygen graphviz
+          sudo apt-get install -y cmake qt6-base-dev qt6-l10n-tools qt6-tools-dev doxygen graphviz
       - name: Configure CMake
         run: cmake -S . -B build -DBUILD_TESTING=OFF
       - name: Generate Documentation
@@ -54,7 +54,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install tools
-        run: sudo apt-get update && sudo apt-get install -y cmake g++ qt6-base-dev clang-tidy libsystemd-dev
+        run: sudo apt-get update && sudo apt-get install -y cmake g++ qt6-base-dev qt6-l10n-tools qt6-tools-dev clang-tidy libsystemd-dev
       - name: Configure
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=ON
       - name: Build
@@ -92,7 +92,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y \
             build-essential libgl1-mesa-dev cmake g++ \
-            qt6-base-dev tftp-hpa tftpd-hpa libsystemd-dev
+            qt6-base-dev qt6-l10n-tools qt6-tools-dev tftp-hpa tftpd-hpa libsystemd-dev
 
       - name: Configure CMake
         env:
@@ -120,11 +120,7 @@ jobs:
           TSAN_OPTIONS: halt_on_error=1:second_deadlock_stack=1:suppressions=${{ github.workspace }}/.tsan_suppressions
         run: ctest --test-dir build --output-on-failure -C Debug
 
-      # in.tftpd (tftp-hpa's server) drops privileges via setuid/setgid on
-      # every request, which requires root — the non-root run above always
-      # skips that half of testCliInteropWithTftpHpa. GitHub runners have
-      # passwordless sudo, so re-run just that test as root here to exercise
-      # it too. -E preserves QT_QPA_PLATFORM / sanitizer env vars under sudo.
+      # in.tftpd needs root; re-run just that test as root via passwordless sudo (-E preserves env vars).
       - name: Run tftp-hpa server-direction interop test (root)
         env:
           QT_QPA_PLATFORM: offscreen
@@ -143,7 +139,7 @@ jobs:
       - name: Install deps
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake g++ qt6-base-dev tftp-hpa libsystemd-dev
+          sudo apt-get install -y cmake g++ qt6-base-dev qt6-l10n-tools qt6-tools-dev tftp-hpa libsystemd-dev
       - name: Configure
         run: |
           cmake -G "Unix Makefiles" -B build \
@@ -173,6 +169,7 @@ jobs:
         uses: jurplel/install-qt-action@v3
         with:
           version: "6.6.3"
+          modules: "qttools qttranslations"
           cache: true
 
       - name: Configure (Windows)
@@ -200,7 +197,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install deps
-        run: sudo apt-get update && sudo apt-get install -y cmake g++ qt6-base-dev lcov tftp-hpa libsystemd-dev
+        run: sudo apt-get update && sudo apt-get install -y cmake g++ qt6-base-dev qt6-l10n-tools qt6-tools-dev lcov tftp-hpa libsystemd-dev
       - name: Configure (coverage)
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DBUILD_COVERAGE=ON
       - name: Build

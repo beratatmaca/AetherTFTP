@@ -2,8 +2,7 @@
 #include "cli/cli_runner.h"
 #include "core/qlog.h"
 #include "gui/mainwindow.h"
-#include "gui/map_translator.h"
-
+#include <QTranslator>
 #include <QApplication>
 #include <QIcon>
 #include <QStringList>
@@ -114,16 +113,13 @@ int main(int argc, char *argv[]) {
         QApplication::setWindowIcon(QIcon(QStringLiteral(":/aether/icon.ico")));
 
         QSettings settings;
-        QString lang = settings.value(QStringLiteral("general/language"), QStringLiteral("system")).toString();
-        if (lang != QStringLiteral("system")) {
-            auto *translator = tftp::gui::MapTranslator::create(lang, &app);
+        QString lang = settings.value(QStringLiteral("app/language"), QStringLiteral("system")).toString();
+        QString effectiveCode = lang;
+        if (effectiveCode == QStringLiteral("system")) {
+            effectiveCode = QLocale::system().name().left(2);
+        }
+        if (auto *translator = tftp::gui::loadTranslator(effectiveCode, &app)) {
             QApplication::installTranslator(translator);
-        } else {
-            QString systemLang = QLocale::system().name().left(2);
-            if (systemLang == QStringLiteral("de") || systemLang == QStringLiteral("tr") || systemLang == QStringLiteral("es")) {
-                auto *translator = tftp::gui::MapTranslator::create(systemLang, &app);
-                QApplication::installTranslator(translator);
-            }
         }
 
         tftp::gui::MainWindow window;

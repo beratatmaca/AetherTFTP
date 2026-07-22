@@ -1,13 +1,4 @@
-# ---------------------------------------------------------------------------
-# Developer tooling targets: formatting, linting, and API documentation.
-# Usage:
-#
-#   cmake --build build --target format        # apply clang-format in place
-#   cmake --build build --target format-check  # verify formatting (CI-safe)
-#   cmake --build build --target tidy          # run clang-tidy static analysis
-#   cmake --build build --target docs          # generate Doxygen HTML
-#
-# ---------------------------------------------------------------------------
+# Developer tooling targets: cmake --build build --target {format,format-check,tidy,docs}
 
 file(GLOB_RECURSE AETHER_FORMAT_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_SOURCE_DIR}/src/*.cpp"

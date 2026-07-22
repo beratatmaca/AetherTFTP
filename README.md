@@ -24,6 +24,7 @@ Written in C++17 and utilizing the Qt 6 framework, it is designed for speed, rel
 * 🔒 **Encrypts transfers with symmetric keys.**
 * 🔍 **Includes detailed log search filters.**
 * ⚙️ **Offers automatic server startup.**
+* 🌍 **Supports 7 UI languages**, switchable live from the View menu without restarting.
 * 🌐 **Includes ProxyDHCP helper for PXE network booting.**
 * 🖥️ **Features an embedded HTML/JS HTTP web dashboard & REST API for remote browser monitoring.**
 
@@ -92,7 +93,7 @@ The architecture separates the core protocol logic from the presentation layer, 
 To build AetherTFTP, you will need:
 
 * **CMake** (v3.16 or higher)
-* **Qt6 SDK** (specifically the `Core`, `Network`, and `Test` modules)
+* **Qt6 SDK** (`Core`, `Network`, `Widgets`, `LinguistTools`, and `Test` modules)
 * **C++17 compliant compiler** (GCC 10+, Clang 12+, or MSVC 2019+)
 
 ### Build Instructions

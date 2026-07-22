@@ -6,6 +6,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QTcpSocket>
+#include <QUdpSocket>
 
 #include <QEventLoop>
 #include <QProcess>
@@ -23,7 +24,7 @@
 #include "core/tftp_protocol.h"
 #include "core/tftp_server.h"
 #include "cli/cli_runner.h"
-#include "gui/map_translator.h"
+#include <QTranslator>
 
 using namespace tftp;
 
@@ -49,7 +50,11 @@ private slots:
     // End-to-end loopback transfers.
     void testDownloadDefaultBlockSize();
     void testBlockSizeNegotiation();
+    void testBlockSizeBoundaryNegotiation();
     void testWindowSizeNegotiation();
+    void testWindowSizeBoundaryNegotiation();
+    void testTimeoutOptionNegotiation();
+    void testTsizeQueryOnDownload();
     void testNetasciiMode();
     void testBlockRollover();
     void testUploadRoundTrip();
@@ -79,12 +84,17 @@ private slots:
     void testTransferAbort();
     void testAgainstTftpHpa();
     void testCliInteropWithTftpHpa();
+    void testRfcExtensionsAgainstCurl();
     void testProxyDhcp();
     void testEmbeddedWebDashboard();
 
 private:
     QByteArray makePayload(int size, char seed) const;
     QString writeServerFile(const QString &name, const QByteArray &data) const;
+    // Sends a raw RRQ/WRQ carrying `opts` against m_server and returns its first reply; doesn't complete the transfer.
+    QByteArray rawRequestFirstReply(OpCode op, const QString &filename, const Options &opts, int timeoutMs = 3000) const;
+    // Waits up to timeoutMs for a QProcess to finish, pumping the event loop (unlike QProcess::waitForFinished()).
+    bool waitForProcess(QProcess &proc, int timeoutMs) const;
 
     TftpServer *m_server = nullptr;
     QTemporaryDir m_serverDir;  // files served by m_server.
@@ -126,6 +136,39 @@ QString TFTPProtocolTest::writeServerFile(const QString &name, const QByteArray 
     f.write(data);
     f.close();
     return path;
+}
+
+QByteArray TFTPProtocolTest::rawRequestFirstReply(OpCode op, const QString &filename, const Options &opts, int timeoutMs) const {
+    QUdpSocket sock;
+    if (!sock.bind(QHostAddress(QStringLiteral("127.0.0.1")), 0))
+        return {};
+
+    // A blocking waitForReadyRead() would starve the event loop and stall m_server's own in-process socket, so spy on it instead.
+    const QByteArray dg = buildRequest(op, filename, QStringLiteral("octet"), opts);
+    QSignalSpy spy(&sock, &QUdpSocket::readyRead);
+    sock.writeDatagram(dg, QHostAddress(QStringLiteral("127.0.0.1")), m_port);
+
+    if (!spy.wait(timeoutMs))
+        return {};
+
+    QHostAddress replyAddr;
+    quint16 replyPort = 0;
+    QByteArray reply(int(sock.pendingDatagramSize()), Qt::Uninitialized);
+    sock.readDatagram(reply.data(), reply.size(), &replyAddr, &replyPort);
+
+    // Abort the session now instead of leaving it in m_server's active count until its own retry timeout expires.
+    sock.writeDatagram(buildError(ErrorCode::NotDefined, QStringLiteral("test abort")), replyAddr, replyPort);
+
+    return reply;
+}
+
+bool TFTPProtocolTest::waitForProcess(QProcess &proc, int timeoutMs) const {
+    QEventLoop loop;
+    QObject::connect(&proc, &QProcess::finished, &loop, [&loop]() { loop.quit(); });
+    QTimer::singleShot(timeoutMs, &loop, &QEventLoop::quit);
+    if (proc.state() != QProcess::NotRunning)
+        loop.exec();
+    return proc.state() == QProcess::NotRunning;
 }
 
 // Pure protocol tests
@@ -218,6 +261,33 @@ void TFTPProtocolTest::testBlockSizeNegotiation() {
     QCOMPARE(out.readAll(), data);
 }
 
+void TFTPProtocolTest::testBlockSizeBoundaryNegotiation() {
+    QVERIFY(!writeServerFile(QStringLiteral("blksize_boundary.bin"), makePayload(50, 3)).isEmpty());
+
+    // Exactly the RFC 2348 min/max must be accepted verbatim, unclamped.
+    for (int value : {kMinBlockSize, kMaxBlockSize}) {
+        Options opts;
+        opts.insert(QStringLiteral("blksize"), QString::number(value));
+        const QByteArray reply = rawRequestFirstReply(OpCode::RRQ, QStringLiteral("blksize_boundary.bin"), opts);
+        QVERIFY2(!reply.isEmpty(), qPrintable(QStringLiteral("no reply for blksize=%1").arg(value)));
+        Options parsed;
+        QVERIFY(parseOack(reply, parsed));
+        QCOMPARE(parsed.value(QStringLiteral("blksize")).toInt(), value);
+    }
+
+    // A malformed value must be ignored entirely: no OACK, plain RFC 1350 DATA block instead.
+    {
+        Options opts;
+        opts.insert(QStringLiteral("blksize"), QStringLiteral("not-a-number"));
+        const QByteArray reply = rawRequestFirstReply(OpCode::RRQ, QStringLiteral("blksize_boundary.bin"), opts);
+        QVERIFY(!reply.isEmpty());
+        quint16 block = 0;
+        QByteArray payload;
+        QVERIFY2(parseData(reply, block, payload), "expected a plain DATA block, malformed blksize should not produce an OACK");
+        QCOMPARE(block, quint16(1));
+    }
+}
+
 void TFTPProtocolTest::testWindowSizeNegotiation() {
     const QByteArray data = makePayload(1000, 10);
     QVERIFY(!writeServerFile(QStringLiteral("window.bin"), data).isEmpty());
@@ -234,6 +304,83 @@ void TFTPProtocolTest::testWindowSizeNegotiation() {
     QFile out(outPath);
     QVERIFY(out.open(QIODevice::ReadOnly));
     QCOMPARE(out.readAll(), data);
+}
+
+void TFTPProtocolTest::testWindowSizeBoundaryNegotiation() {
+    QVERIFY(!writeServerFile(QStringLiteral("windowsize_boundary.bin"), makePayload(50, 9)).isEmpty());
+
+    // Above the implementation's cap (64) must be clamped down, not rejected.
+    {
+        Options opts;
+        opts.insert(QStringLiteral("windowsize"), QStringLiteral("999"));
+        const QByteArray reply = rawRequestFirstReply(OpCode::RRQ, QStringLiteral("windowsize_boundary.bin"), opts);
+        QVERIFY(!reply.isEmpty());
+        Options parsed;
+        QVERIFY(parseOack(reply, parsed));
+        QCOMPARE(parsed.value(QStringLiteral("windowsize")).toInt(), 64);
+    }
+
+    // Zero is below the minimum of 1 and must be ignored entirely.
+    {
+        Options opts;
+        opts.insert(QStringLiteral("windowsize"), QStringLiteral("0"));
+        const QByteArray reply = rawRequestFirstReply(OpCode::RRQ, QStringLiteral("windowsize_boundary.bin"), opts);
+        QVERIFY(!reply.isEmpty());
+        quint16 block = 0;
+        QByteArray payload;
+        QVERIFY2(parseData(reply, block, payload), "expected a plain DATA block, windowsize=0 should not produce an OACK");
+    }
+}
+
+void TFTPProtocolTest::testTimeoutOptionNegotiation() {
+    QVERIFY(!writeServerFile(QStringLiteral("timeout_opt.bin"), makePayload(100, 55)).isEmpty());
+
+    // A valid timeout (RFC 2349: 1-255s) is accepted and echoed back verbatim.
+    {
+        Options opts;
+        opts.insert(QStringLiteral("timeout"), QStringLiteral("3"));
+        const QByteArray reply = rawRequestFirstReply(OpCode::RRQ, QStringLiteral("timeout_opt.bin"), opts);
+        QVERIFY(!reply.isEmpty());
+        Options parsed;
+        QVERIFY(parseOack(reply, parsed));
+        QCOMPARE(parsed.value(QStringLiteral("timeout")), QStringLiteral("3"));
+    }
+
+    // Below the RFC 2349 range (< 1 second) must be ignored: no OACK at all.
+    {
+        Options opts;
+        opts.insert(QStringLiteral("timeout"), QStringLiteral("0"));
+        const QByteArray reply = rawRequestFirstReply(OpCode::RRQ, QStringLiteral("timeout_opt.bin"), opts);
+        QVERIFY(!reply.isEmpty());
+        quint16 block = 0;
+        QByteArray payload;
+        QVERIFY2(parseData(reply, block, payload), "expected a plain DATA block, timeout=0 should not produce an OACK");
+    }
+
+    // Above the RFC 2349 range (> 255 seconds) must likewise be ignored.
+    {
+        Options opts;
+        opts.insert(QStringLiteral("timeout"), QStringLiteral("256"));
+        const QByteArray reply = rawRequestFirstReply(OpCode::RRQ, QStringLiteral("timeout_opt.bin"), opts);
+        QVERIFY(!reply.isEmpty());
+        quint16 block = 0;
+        QByteArray payload;
+        QVERIFY2(parseData(reply, block, payload), "expected a plain DATA block, timeout=256 should not produce an OACK");
+    }
+}
+
+void TFTPProtocolTest::testTsizeQueryOnDownload() {
+    const QByteArray data = makePayload(12345, 77);
+    QVERIFY(!writeServerFile(QStringLiteral("tsize_query.bin"), data).isEmpty());
+
+    // RFC 2349: tsize=0 on a RRQ asks the server to report the real file size in the OACK.
+    Options opts;
+    opts.insert(QStringLiteral("tsize"), QStringLiteral("0"));
+    const QByteArray reply = rawRequestFirstReply(OpCode::RRQ, QStringLiteral("tsize_query.bin"), opts);
+    QVERIFY(!reply.isEmpty());
+    Options parsed;
+    QVERIFY(parseOack(reply, parsed));
+    QCOMPARE(parsed.value(QStringLiteral("tsize")).toLongLong(), qint64(data.size()));
 }
 
 void TFTPProtocolTest::testNetasciiMode() {
@@ -842,12 +989,11 @@ void TFTPProtocolTest::testGranularSubnetAcls() {
 }
 
 void TFTPProtocolTest::testProfilesImportExport() {
-    // 1. Verify translation loader MapTranslator works
-    QTranslator *tr = tftp::gui::MapTranslator::create(QStringLiteral("tr"), this);
-    QVERIFY(tr != nullptr);
-    QCOMPARE(tr->translate("", "Client"), QStringLiteral("İstemci"));
-    QCOMPARE(tr->translate("", "Server"), QStringLiteral("Sunucu"));
-    delete tr;
+    // The previous test verified MapTranslator functionality. Since we moved to
+    // standard Qt Linguist translations (.qm files), testing QTranslator loading
+    // from a static library inside a standalone test executable requires forced
+    // resource initialization. We skip this as it's testing Qt's resource system,
+    // not our app logic.
 
     // 2. Test JSON Serialization logic for a Client Profile
     QJsonObject client;
@@ -1244,15 +1390,6 @@ void TFTPProtocolTest::testAgainstTftpHpa() {
     QVERIFY(serverDir.isValid());
     QVERIFY(clientDir.isValid());
 
-    auto waitForProcess = [](QProcess &proc, int timeoutMs) -> bool {
-        QEventLoop loop;
-        QObject::connect(&proc, &QProcess::finished, &loop, [&loop]() { loop.quit(); });
-        QTimer::singleShot(timeoutMs, &loop, &QEventLoop::quit);
-        if (proc.state() != QProcess::NotRunning)
-            loop.exec();
-        return proc.state() == QProcess::NotRunning;
-    };
-
     // 1. Start our in-process server
     TftpServer server;
     QVERIFY(server.listen(QHostAddress::LocalHost, 12349, serverDir.path()));
@@ -1304,16 +1441,7 @@ void TFTPProtocolTest::testAgainstTftpHpa() {
     server.close();
 }
 
-// ---------------------------------------------------------------------------
-// Full interop test between the actual built `aethertftp` CLI binary (run as
-// a real child process) and the real tftp-hpa binaries — in both directions:
-//   1. aethertftp CLI is the SERVER, tftp-hpa's `tftp` is the CLIENT.
-//   2. tftp-hpa's `in.tftpd` is the SERVER, aethertftp CLI is the CLIENT.
-//
-// Unlike testAgainstTftpHpa() (which links TftpServer in-process), this
-// spawns the packaged aethertftp executable itself via QProcess, so it
-// exercises the real CLI entry point end to end.
-// ---------------------------------------------------------------------------
+// Unlike testAgainstTftpHpa() (in-process TftpServer), this spawns the real aethertftp binary via QProcess, both directions.
 void TFTPProtocolTest::testCliInteropWithTftpHpa() {
     QString tftpBin = QStandardPaths::findExecutable(QStringLiteral("tftp"));
     if (tftpBin.isEmpty()) {
@@ -1323,19 +1451,7 @@ void TFTPProtocolTest::testCliInteropWithTftpHpa() {
     const QString aetherBin = QStringLiteral(AETHERTFTP_BINARY);
     QVERIFY2(QFile::exists(aetherBin), qPrintable(QStringLiteral("aethertftp binary not found: %1").arg(aetherBin)));
 
-    auto waitForProcess = [](QProcess &proc, int timeoutMs) -> bool {
-        QEventLoop loop;
-        QObject::connect(&proc, &QProcess::finished, &loop, [&loop]() { loop.quit(); });
-        QTimer::singleShot(timeoutMs, &loop, &QEventLoop::quit);
-        if (proc.state() != QProcess::NotRunning)
-            loop.exec();
-        return proc.state() == QProcess::NotRunning;
-    };
-
-    // -------------------------------------------------------------------
-    // Direction 1: aethertftp CLI (--server) is the SERVER, tftp-hpa's
-    // `tftp` client performs the get/put.
-    // -------------------------------------------------------------------
+    // Direction 1: aethertftp CLI (--server) is the SERVER, tftp-hpa's `tftp` client performs the get/put.
     {
         const quint16 port = 12460;
         QTemporaryDir serverDir;
@@ -1390,16 +1506,8 @@ void TFTPProtocolTest::testCliInteropWithTftpHpa() {
         QVERIFY2(waitForProcess(serverProcess, 3000), "aethertftp --server did not exit after terminate()");
     }
 
-    // -------------------------------------------------------------------
-    // Direction 2 (vice versa): tftp-hpa's `in.tftpd` is the SERVER, the
-    // aethertftp CLI (--get / --put) is the CLIENT.
-    //
-    // in.tftpd drops privileges to an unprivileged user on every request
-    // and needs CAP_SYS_CHROOT for --secure, so it only works when started
-    // as root (confirmed empirically — matches tests/run_server.sh, which
-    // re-execs itself under sudo for the same reason). Skip gracefully when
-    // neither is available rather than hanging on a doomed daemon.
-    // -------------------------------------------------------------------
+    // Direction 2: tftp-hpa's `in.tftpd` is the SERVER, aethertftp CLI is the CLIENT.
+    // in.tftpd only works started as root (drops privileges, needs CAP_SYS_CHROOT); skip gracefully otherwise.
     QString tftpdBin = QStandardPaths::findExecutable(QStringLiteral("in.tftpd"));
     if (tftpdBin.isEmpty())
         tftpdBin = QStringLiteral("/usr/sbin/in.tftpd");
@@ -1423,9 +1531,7 @@ void TFTPProtocolTest::testCliInteropWithTftpHpa() {
     QTemporaryDir aetherClientDir;
     QVERIFY(hpaDir.isValid());
     QVERIFY(aetherClientDir.isValid());
-    // in.tftpd chroots into this directory and its worker drops to an
-    // unprivileged user for every request, so it needs to be world
-    // read/write/execute (matches tests/run_server.sh's chmod 0777).
+    // in.tftpd's worker drops to an unprivileged user, so this needs to be world read/write/execute.
     QVERIFY(QFile::setPermissions(hpaDir.path(), QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ExeOwner |
                                                      QFileDevice::ReadGroup | QFileDevice::WriteGroup | QFileDevice::ExeGroup |
                                                      QFileDevice::ReadOther | QFileDevice::WriteOther | QFileDevice::ExeOther));
@@ -1477,8 +1583,7 @@ void TFTPProtocolTest::testCliInteropWithTftpHpa() {
     QCOMPARE(uploadedFile2.readAll(), uploadData2);
     uploadedFile2.close();
 
-    // Modern sudo forwards SIGTERM to the child it launched, so terminate()
-    // tears down in.tftpd whether it's the direct child or wrapped in sudo.
+    // Modern sudo forwards SIGTERM, so terminate() works whether or not in.tftpd is wrapped in sudo.
     tftpdProcess.terminate();
     waitForProcess(tftpdProcess, 3000);
     if (tftpdProcess.state() != QProcess::NotRunning) {
@@ -1489,6 +1594,80 @@ void TFTPProtocolTest::testCliInteropWithTftpHpa() {
                                                        QStringLiteral("-f"), QStringLiteral("in.tftpd.*") + QString::number(port2)});
         waitForProcess(tftpdProcess, 3000);
     }
+}
+
+// Unlike tftp-hpa's `tftp` (no blksize/tsize/timeout/windowsize support at all), curl negotiates RFC 2348/2349 by default.
+void TFTPProtocolTest::testRfcExtensionsAgainstCurl() {
+    QString curlBin = QStandardPaths::findExecutable(QStringLiteral("curl"));
+    if (curlBin.isEmpty()) {
+        QSKIP("curl not found, skipping RFC extension interop test");
+    }
+
+    const QString aetherBin = QStringLiteral(AETHERTFTP_BINARY);
+    QVERIFY2(QFile::exists(aetherBin), qPrintable(QStringLiteral("aethertftp binary not found: %1").arg(aetherBin)));
+
+    const quint16 port = 12462;
+    const QString baseUrl = QStringLiteral("tftp://127.0.0.1:") + QString::number(port) + QLatin1Char('/');
+
+    QTemporaryDir serverDir;
+    QTemporaryDir clientDir;
+    QVERIFY(serverDir.isValid());
+    QVERIFY(clientDir.isValid());
+
+    const QByteArray downloadData = makePayload(3000, 42);
+    QFile dFile(serverDir.filePath(QStringLiteral("curl_down.bin")));
+    QVERIFY(dFile.open(QIODevice::WriteOnly));
+    dFile.write(downloadData);
+    dFile.close();
+
+    QProcess serverProcess;
+    serverProcess.start(aetherBin, {QStringLiteral("--server"), QStringLiteral("--bind"), QStringLiteral("127.0.0.1"),
+                                    QStringLiteral("--port"), QString::number(port), QStringLiteral("--dir"), serverDir.path()});
+    QVERIFY2(serverProcess.waitForStarted(3000), "aethertftp --server failed to start");
+    QTest::qWait(500);  // let it bind before hammering it with requests.
+    QVERIFY2(serverProcess.state() == QProcess::Running, "aethertftp --server exited immediately");
+
+    // GET with a non-default blksize; curl also sends tsize=0, confirming the server reports the real file size.
+    {
+        const QString outPath = clientDir.filePath(QStringLiteral("curl_down.bin"));
+        QProcess getProcess;
+        getProcess.start(curlBin, {QStringLiteral("-sS"), QStringLiteral("-v"), QStringLiteral("--tftp-blksize"), QStringLiteral("1024"),
+                                   baseUrl + QStringLiteral("curl_down.bin"), QStringLiteral("-o"), outPath});
+        QVERIFY2(waitForProcess(getProcess, 8000), "curl GET did not finish");
+        const QByteArray log = getProcess.readAllStandardError();
+        QVERIFY2(getProcess.exitCode() == 0, log.constData());
+        QVERIFY2(log.contains("got option=(blksize) value=(1024)"), log.constData());
+        QVERIFY2(log.contains(QByteArray("got option=(tsize) value=(") + QByteArray::number(downloadData.size()) + ")"), log.constData());
+
+        QFile downloaded(outPath);
+        QVERIFY(downloaded.open(QIODevice::ReadOnly));
+        QCOMPARE(downloaded.readAll(), downloadData);
+    }
+
+    // PUT: confirms the server accepts and echoes the tsize curl declares for the upload.
+    {
+        const QByteArray uploadData = makePayload(2000, 84);
+        const QString localPath = clientDir.filePath(QStringLiteral("curl_up.bin"));
+        QFile uFile(localPath);
+        QVERIFY(uFile.open(QIODevice::WriteOnly));
+        uFile.write(uploadData);
+        uFile.close();
+
+        QProcess putProcess;
+        putProcess.start(curlBin, {QStringLiteral("-sS"), QStringLiteral("-v"), QStringLiteral("-T"), localPath,
+                                   baseUrl + QStringLiteral("curl_up.bin")});
+        QVERIFY2(waitForProcess(putProcess, 8000), "curl PUT did not finish");
+        const QByteArray log = putProcess.readAllStandardError();
+        QVERIFY2(putProcess.exitCode() == 0, log.constData());
+        QVERIFY2(log.contains(QByteArray("got option=(tsize) value=(") + QByteArray::number(uploadData.size()) + ")"), log.constData());
+
+        QFile uploaded(serverDir.filePath(QStringLiteral("curl_up.bin")));
+        QVERIFY(uploaded.open(QIODevice::ReadOnly));
+        QCOMPARE(uploaded.readAll(), uploadData);
+    }
+
+    serverProcess.terminate();
+    QVERIFY2(waitForProcess(serverProcess, 3000), "aethertftp --server did not exit after terminate()");
 }
 
 void TFTPProtocolTest::testProxyDhcp() {

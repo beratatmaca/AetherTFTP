@@ -68,6 +68,7 @@ jobs:
         uses: jurplel/install-qt-action@v3
         with:
           version: "6.6.3"
+          modules: "qttools qttranslations"
           cache: false
 
       # Linux Setup & Compilation
@@ -75,7 +76,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential libgl1-mesa-dev
+          sudo apt-get install -y build-essential libgl1-mesa-dev qt6-l10n-tools qt6-tools-dev
 
       - name: Configure CMake (Linux)
         if: matrix.os == 'ubuntu-latest'

@@ -4,6 +4,7 @@
 #include "core/tftp_client.h"
 #include "core/tftp_protocol.h"
 #include "core/tftp_server.h"
+#include <QTranslator>
 #include "gui/theme_controller.h"
 #include "gui/transfer_model.h"
 #include "gui/speed_chart_widget.h"
@@ -67,6 +68,16 @@ QString formatBytes(qint64 bytes) {
 
 }  // namespace
 
+QTranslator *loadTranslator(const QString &code, QObject *parent) {
+    if (code == QStringLiteral("en"))
+        return nullptr;
+    auto *translator = new QTranslator(parent);
+    if (translator->load(QStringLiteral(":/i18n/aethertftp_") + code + QStringLiteral(".qm")))
+        return translator;
+    delete translator;
+    return nullptr;
+}
+
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     setWindowTitle(QStringLiteral("AetherTFTP"));
     setWindowIcon(QIcon(QStringLiteral(":/aether/icon.ico")));
@@ -86,8 +97,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     setCentralWidget(buildMainView());
 
     buildMenus();
-
-    setupTrayIcon();
 
     // Status bar with a permanent version readout.
     auto *versionLabel = new QLabel(QString::fromLatin1(AETHER_VERSION_STRING), this);
@@ -416,6 +425,11 @@ QWidget *MainWindow::buildMainView() {
     leftLayout->addWidget(m_configStack, 1);
 
     scrollArea->setWidget(leftContainer);
+
+    // Ensure the scroll area never compresses the left panel below its required width
+    // when translation strings are longer than the previous language.
+    scrollArea->setMinimumWidth(leftContainer->minimumSizeHint().width() + 25);
+
     mainLayout->addWidget(scrollArea, 30);  // Left sidebar width percentage
 
     // Right Column: Live Dashboard (Stats card row + Speed Chart) + Active Transfers List + Activity Log
@@ -550,6 +564,14 @@ QWidget *MainWindow::makeMetricCard(const QString &caption, QLabel **valueOut) {
 }
 
 void MainWindow::buildMenus() {
+    // Called again on every language switch; menuBar()->clear() only detaches the old menu/action tree, it doesn't delete it.
+    QMenuBar *oldBar = menuBar();
+    oldBar->deleteLater();
+    for (auto *g : findChildren<QActionGroup *>(QString(), Qt::FindDirectChildrenOnly)) {
+        g->deleteLater();
+    }
+    setMenuBar(new QMenuBar(this));
+
     auto *viewMenu = menuBar()->addMenu(tr("&View"));
     auto *themeMenu = viewMenu->addMenu(tr("&Theme"));
     auto *group = new QActionGroup(this);
@@ -588,6 +610,11 @@ void MainWindow::buildMenus() {
         showStatus(tr("Theme: %1").arg(QString(act->text()).remove(QLatin1Char('&'))));
     });
 
+    viewMenu->addSeparator();
+    m_enableTrayAction = viewMenu->addAction(tr("Enable System Tray"));
+    m_enableTrayAction->setCheckable(true);
+    connect(m_enableTrayAction, &QAction::toggled, this, &MainWindow::toggleSystemTray);
+
     auto *langMenu = viewMenu->addMenu(tr("&Language"));
     auto *langGroup = new QActionGroup(this);
     const auto addLangAction = [&](const QString &text, const QString &code) {
@@ -599,18 +626,27 @@ void MainWindow::buildMenus() {
     };
     QAction *langSys = addLangAction(tr("&System Default"), QStringLiteral("system"));
     QAction *langEn = addLangAction(tr("&English"), QStringLiteral("en"));
+    QAction *langHi = addLangAction(tr("&Hindi (हिन्दी)"), QStringLiteral("hi"));
+    QAction *langFr = addLangAction(tr("&French (Français)"), QStringLiteral("fr"));
     QAction *langDe = addLangAction(tr("&German (Deutsch)"), QStringLiteral("de"));
-    QAction *langTr = addLangAction(tr("&Turkish (Türkçe)"), QStringLiteral("tr"));
     QAction *langEs = addLangAction(tr("&Spanish (Español)"), QStringLiteral("es"));
+    QAction *langTr = addLangAction(tr("&Turkish (Türkçe)"), QStringLiteral("tr"));
+    QAction *langPl = addLangAction(tr("&Polish (Polski)"), QStringLiteral("pl"));
 
     QSettings langSettings;
-    QString currentLang = langSettings.value(QStringLiteral("general/language"), QStringLiteral("system")).toString();
-    if (currentLang == QStringLiteral("de"))
+    QString currentLang = langSettings.value(QStringLiteral("app/language"), QStringLiteral("system")).toString();
+    if (currentLang == QStringLiteral("hi"))
+        langHi->setChecked(true);
+    else if (currentLang == QStringLiteral("fr"))
+        langFr->setChecked(true);
+    else if (currentLang == QStringLiteral("de"))
         langDe->setChecked(true);
-    else if (currentLang == QStringLiteral("tr"))
-        langTr->setChecked(true);
     else if (currentLang == QStringLiteral("es"))
         langEs->setChecked(true);
+    else if (currentLang == QStringLiteral("tr"))
+        langTr->setChecked(true);
+    else if (currentLang == QStringLiteral("pl"))
+        langPl->setChecked(true);
     else if (currentLang == QStringLiteral("en"))
         langEn->setChecked(true);
     else
@@ -619,8 +655,32 @@ void MainWindow::buildMenus() {
     connect(langGroup, &QActionGroup::triggered, this, [this](QAction *act) {
         QString code = act->data().toString();
         QSettings settings;
-        settings.setValue(QStringLiteral("general/language"), code);
-        QMessageBox::information(this, tr("Language Changed"), tr("Please restart the application to apply the language change."));
+        // Not "general/language": QSettings' reserved "General" section collides with a group literally named "general", corrupting the
+        // round-trip.
+        settings.setValue(QStringLiteral("app/language"), code);
+
+        QString effectiveCode = code;
+        if (effectiveCode == QStringLiteral("system")) {
+            effectiveCode = QLocale::system().name().left(2);
+        }
+
+        for (auto *t : qApp->findChildren<QTranslator *>()) {
+            qApp->removeTranslator(t);
+            t->deleteLater();
+        }
+
+        bool loaded = (effectiveCode == QStringLiteral("en"));
+        if (auto *translator = loadTranslator(effectiveCode, qApp)) {
+            qApp->installTranslator(translator);
+            loaded = true;
+        }
+
+        retranslateUi();
+
+        // Set after retranslateUi() so its own status message doesn't mask a load failure.
+        if (!loaded) {
+            showStatus(tr("Could not load translation for \"%1\"; showing English instead.").arg(effectiveCode));
+        }
     });
 
     auto *profilesMenu = menuBar()->addMenu(tr("&Profiles"));
@@ -1033,6 +1093,12 @@ void MainWindow::updateMetrics() {
 void MainWindow::loadSettings() {
     QSettings settings;
 
+    m_enableTray = settings.value(QStringLiteral("ui/enableTray"), false).toBool();
+    if (m_enableTrayAction) {
+        m_enableTrayAction->setChecked(m_enableTray);
+        toggleSystemTray(m_enableTray);
+    }
+
     m_hostEdit->setText(settings.value(QStringLiteral("client/host")).toString());
     m_clientPortSpin->setValue(settings.value(QStringLiteral("client/port"), kDefaultPort).toInt());
     m_blockSizeSpin->setValue(settings.value(QStringLiteral("client/blockSize"), kDefaultBlockSize).toInt());
@@ -1136,7 +1202,8 @@ void MainWindow::loadSettings() {
     loadProfileList();
     loadServerProfileList();
 
-    if (m_serverAutoStart) {
+    // Also runs from retranslateUi() now, so guard against toggling off an already-running server.
+    if (m_serverAutoStart && !m_serverRunning) {
         QTimer::singleShot(0, this, &MainWindow::toggleServer);
     }
 }
@@ -1208,22 +1275,27 @@ void MainWindow::setupTrayIcon() {
     m_trayIcon = new QSystemTrayIcon(QIcon(QStringLiteral(":/aether/icon.ico")), this);
     m_trayIcon->setToolTip(QStringLiteral("AetherTFTP"));
 
+    // trayMenu below must parent to `this` (QMenu needs a QWidget*), so it isn't reclaimed when m_trayIcon is torn down; discard the old
+    // one here.
+    for (auto *m : findChildren<QMenu *>(QString(), Qt::FindDirectChildrenOnly)) {
+        m->deleteLater();
+    }
     auto *trayMenu = new QMenu(this);
 
-    auto *restoreAct = new QAction(tr("Show Window"), this);
+    auto *restoreAct = new QAction(tr("Show Window"), m_trayIcon);
     connect(restoreAct, &QAction::triggered, this, [this]() {
         showNormal();
         activateWindow();
     });
     trayMenu->addAction(restoreAct);
 
-    m_trayToggleServerAction = new QAction(m_serverRunning ? tr("Stop Server") : tr("Start Server"), this);
+    m_trayToggleServerAction = new QAction(m_serverRunning ? tr("Stop Server") : tr("Start Server"), m_trayIcon);
     connect(m_trayToggleServerAction, &QAction::triggered, this, &MainWindow::toggleServer);
     trayMenu->addAction(m_trayToggleServerAction);
 
     trayMenu->addSeparator();
 
-    auto *quitAct = new QAction(tr("Quit"), this);
+    auto *quitAct = new QAction(tr("Quit"), m_trayIcon);
     connect(quitAct, &QAction::triggered, qApp, &QCoreApplication::quit);
     trayMenu->addAction(quitAct);
 
@@ -1239,8 +1311,55 @@ void MainWindow::setupTrayIcon() {
             }
         }
     });
+}
 
-    m_trayIcon->show();
+void MainWindow::toggleSystemTray(bool enable) {
+    m_enableTray = enable;
+    if (enable) {
+        if (!m_trayIcon) {
+            setupTrayIcon();
+        }
+        if (m_trayIcon) {
+            m_trayIcon->show();
+        }
+    } else {
+        if (m_trayIcon) {
+            m_trayIcon->hide();
+        }
+    }
+
+    QSettings settings;
+    settings.setValue(QStringLiteral("ui/enableTray"), enable);
+}
+
+void MainWindow::retranslateUi() {
+    saveSettings();
+
+    buildMenus();
+
+    setCentralWidget(buildMainView());
+
+    if (m_trayIcon) {
+        m_trayIcon->deleteLater();
+        m_trayIcon = nullptr;
+        // Parented to (and destroyed with) m_trayIcon.
+        m_trayToggleServerAction = nullptr;
+        toggleSystemTray(m_enableTray);
+    }
+
+    loadSettings();
+    filterLog();  // buildMainView() just recreated m_log empty; repopulate from m_allLogLines.
+
+    if (m_serverRunning) {
+        // Mirrors toggleServer()'s running-state text/style.
+        m_serverToggleBtn->setText(tr("Sto&p Server"));
+        m_serverStatusLabel->setText(tr("● Listening on port %1").arg(m_server->port()));
+        m_serverStatusLabel->setObjectName(QStringLiteral("statusRunning"));
+        m_serverStatusLabel->style()->unpolish(m_serverStatusLabel);
+        m_serverStatusLabel->style()->polish(m_serverStatusLabel);
+    } else {
+        showStatus(tr("Ready. Drag files onto the window to upload."));
+    }
 }
 
 void MainWindow::loadProfileList() {

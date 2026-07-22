@@ -19,6 +19,7 @@ class QComboBox;
 class QCheckBox;
 class QSystemTrayIcon;
 class QMenu;
+class QTranslator;
 
 namespace tftp {
 class TftpServer;
@@ -30,6 +31,16 @@ namespace tftp::gui {
 class TransferModel;
 class ThemeController;
 class SpeedChartWidget;
+
+/**
+ * @brief Loads the compiled .qm translation for a language code.
+ * @param code Two-letter language code (e.g. "de"); "en" always yields
+ *             nullptr since the source strings are already English.
+ * @param parent Owner for the returned QTranslator, if one is returned.
+ * @return A loaded QTranslator ready for QCoreApplication::installTranslator(),
+ *         or nullptr if @p code is "en" or the .qm resource failed to load.
+ */
+QTranslator *loadTranslator(const QString &code, QObject *parent);
 
 /**
  * @brief The AetherTFTP main application window.
@@ -77,6 +88,7 @@ private slots:
     void exportClientProfile();
     void importServerProfile();
     void exportServerProfile();
+    void retranslateUi();
 
 private:
     QWidget *buildMainView();
@@ -192,9 +204,12 @@ private:
     ThemeController *m_theme = nullptr;
 
     // System Tray
+    bool m_enableTray = false;
     QSystemTrayIcon *m_trayIcon = nullptr;
     QAction *m_trayToggleServerAction = nullptr;
+    QAction *m_enableTrayAction = nullptr;
     void setupTrayIcon();
+    void toggleSystemTray(bool enable);
 
     // Active-transfer bookkeeping. The id is stable across row removals, so it
     // survives "Clear Completed" (which shifts row indices).
