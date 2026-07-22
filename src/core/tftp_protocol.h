@@ -171,20 +171,22 @@ bool parseOack(const QByteArray &datagram, Options &outOptions);
 /// @}
 
 /**
- * @brief Clamp a requested block size into the RFC 2348 valid range.
- * @param requested Requested block size in bytes.
- * @return @p requested clamped to [kMinBlockSize, kMaxBlockSize].
- */
-/**
  * @brief Convert host native byte array to Netascii (RFC 1350 compliance).
+ * @param input Host-native byte array to convert.
  */
 QByteArray toNetascii(const QByteArray &input);
 
 /**
  * @brief Convert Netascii byte array to host native (RFC 1350 compliance).
+ * @param input Netascii-encoded byte array to convert.
  */
 QByteArray fromNetascii(const QByteArray &input);
 
+/**
+ * @brief Clamp a requested block size into the RFC 2348 valid range.
+ * @param requested Requested block size in bytes.
+ * @return @p requested clamped to [kMinBlockSize, kMaxBlockSize].
+ */
 int clampBlockSize(int requested);
 
 /**

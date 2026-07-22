@@ -143,6 +143,9 @@ if(BUILD_TESTING)
     enable_testing()
     add_executable(tftp_test tests/tftp_test.cpp)
     target_link_libraries(tftp_test PRIVATE aether_core aether_cli Qt6::Core Qt6::Network Qt6::Test)
+    target_compile_definitions(tftp_test PRIVATE
+        AETHERTFTP_BINARY="$<TARGET_FILE:aethertftp>")
+    add_dependencies(tftp_test aethertftp)
     add_test(NAME tftp_test COMMAND tftp_test)
 endif()
 

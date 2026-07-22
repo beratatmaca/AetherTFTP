@@ -77,6 +77,7 @@ if(DOXYGEN_FOUND)
         set(DOXYGEN_DOT_IMAGE_FORMAT svg)
         set(DOXYGEN_CALL_GRAPH YES)
         set(DOXYGEN_CALLER_GRAPH YES)
+        set(DOXYGEN_DOT_GRAPH_MAX_NODES 100)
     endif()
 
     doxygen_add_docs(docs

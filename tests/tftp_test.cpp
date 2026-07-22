@@ -78,6 +78,7 @@ private slots:
     void testPacketLossSimulation();
     void testTransferAbort();
     void testAgainstTftpHpa();
+    void testCliInteropWithTftpHpa();
     void testProxyDhcp();
     void testEmbeddedWebDashboard();
 
@@ -1301,6 +1302,193 @@ void TFTPProtocolTest::testAgainstTftpHpa() {
     uploadedFile.close();
 
     server.close();
+}
+
+// ---------------------------------------------------------------------------
+// Full interop test between the actual built `aethertftp` CLI binary (run as
+// a real child process) and the real tftp-hpa binaries — in both directions:
+//   1. aethertftp CLI is the SERVER, tftp-hpa's `tftp` is the CLIENT.
+//   2. tftp-hpa's `in.tftpd` is the SERVER, aethertftp CLI is the CLIENT.
+//
+// Unlike testAgainstTftpHpa() (which links TftpServer in-process), this
+// spawns the packaged aethertftp executable itself via QProcess, so it
+// exercises the real CLI entry point end to end.
+// ---------------------------------------------------------------------------
+void TFTPProtocolTest::testCliInteropWithTftpHpa() {
+    QString tftpBin = QStandardPaths::findExecutable(QStringLiteral("tftp"));
+    if (tftpBin.isEmpty()) {
+        QSKIP("tftp-hpa client (tftp) not found, skipping CLI interop test");
+    }
+
+    const QString aetherBin = QStringLiteral(AETHERTFTP_BINARY);
+    QVERIFY2(QFile::exists(aetherBin), qPrintable(QStringLiteral("aethertftp binary not found: %1").arg(aetherBin)));
+
+    auto waitForProcess = [](QProcess &proc, int timeoutMs) -> bool {
+        QEventLoop loop;
+        QObject::connect(&proc, &QProcess::finished, &loop, [&loop]() { loop.quit(); });
+        QTimer::singleShot(timeoutMs, &loop, &QEventLoop::quit);
+        if (proc.state() != QProcess::NotRunning)
+            loop.exec();
+        return proc.state() == QProcess::NotRunning;
+    };
+
+    // -------------------------------------------------------------------
+    // Direction 1: aethertftp CLI (--server) is the SERVER, tftp-hpa's
+    // `tftp` client performs the get/put.
+    // -------------------------------------------------------------------
+    {
+        const quint16 port = 12460;
+        QTemporaryDir serverDir;
+        QTemporaryDir clientDir;
+        QVERIFY(serverDir.isValid());
+        QVERIFY(clientDir.isValid());
+
+        QByteArray downloadData = "Data served by the aethertftp CLI for tftp-hpa to download!";
+        QFile dFile(serverDir.filePath(QStringLiteral("aether_cli_down.txt")));
+        QVERIFY(dFile.open(QIODevice::WriteOnly));
+        dFile.write(downloadData);
+        dFile.close();
+
+        QByteArray uploadData = "Data uploaded by tftp-hpa to the aethertftp CLI!";
+        QFile uFile(clientDir.filePath(QStringLiteral("aether_cli_up.txt")));
+        QVERIFY(uFile.open(QIODevice::WriteOnly));
+        uFile.write(uploadData);
+        uFile.close();
+
+        QProcess serverProcess;
+        serverProcess.start(aetherBin, {QStringLiteral("--server"), QStringLiteral("--bind"), QStringLiteral("127.0.0.1"),
+                                        QStringLiteral("--port"), QString::number(port), QStringLiteral("--dir"), serverDir.path()});
+        QVERIFY2(serverProcess.waitForStarted(3000), "aethertftp --server failed to start");
+        QTest::qWait(500);  // let it bind before hammering it with requests.
+        QVERIFY2(serverProcess.state() == QProcess::Running, "aethertftp --server exited immediately");
+
+        QProcess downloadProcess;
+        downloadProcess.setWorkingDirectory(clientDir.path());
+        downloadProcess.start(tftpBin, {QStringLiteral("-m"), QStringLiteral("binary"), QStringLiteral("127.0.0.1"), QString::number(port),
+                                        QStringLiteral("-c"), QStringLiteral("get"), QStringLiteral("aether_cli_down.txt")});
+        QVERIFY2(waitForProcess(downloadProcess, 8000), "tftp-hpa download from aethertftp CLI did not finish");
+        QCOMPARE(downloadProcess.exitCode(), 0);
+
+        QFile downloadedFile(clientDir.filePath(QStringLiteral("aether_cli_down.txt")));
+        QVERIFY(downloadedFile.open(QIODevice::ReadOnly));
+        QCOMPARE(downloadedFile.readAll(), downloadData);
+        downloadedFile.close();
+
+        QProcess uploadProcess;
+        uploadProcess.setWorkingDirectory(clientDir.path());
+        uploadProcess.start(tftpBin, {QStringLiteral("-m"), QStringLiteral("binary"), QStringLiteral("127.0.0.1"), QString::number(port),
+                                      QStringLiteral("-c"), QStringLiteral("put"), QStringLiteral("aether_cli_up.txt")});
+        QVERIFY2(waitForProcess(uploadProcess, 8000), "tftp-hpa upload to aethertftp CLI did not finish");
+        QCOMPARE(uploadProcess.exitCode(), 0);
+
+        QFile uploadedFile(serverDir.filePath(QStringLiteral("aether_cli_up.txt")));
+        QVERIFY(uploadedFile.open(QIODevice::ReadOnly));
+        QCOMPARE(uploadedFile.readAll(), uploadData);
+        uploadedFile.close();
+
+        serverProcess.terminate();
+        QVERIFY2(waitForProcess(serverProcess, 3000), "aethertftp --server did not exit after terminate()");
+    }
+
+    // -------------------------------------------------------------------
+    // Direction 2 (vice versa): tftp-hpa's `in.tftpd` is the SERVER, the
+    // aethertftp CLI (--get / --put) is the CLIENT.
+    //
+    // in.tftpd drops privileges to an unprivileged user on every request
+    // and needs CAP_SYS_CHROOT for --secure, so it only works when started
+    // as root (confirmed empirically — matches tests/run_server.sh, which
+    // re-execs itself under sudo for the same reason). Skip gracefully when
+    // neither is available rather than hanging on a doomed daemon.
+    // -------------------------------------------------------------------
+    QString tftpdBin = QStandardPaths::findExecutable(QStringLiteral("in.tftpd"));
+    if (tftpdBin.isEmpty())
+        tftpdBin = QStringLiteral("/usr/sbin/in.tftpd");
+#ifdef Q_OS_WIN
+    const bool haveRoot = false;
+#else
+    const bool haveRoot = (::geteuid() == 0);
+#endif
+    bool haveSudo = false;
+    if (!haveRoot) {
+        QProcess sudoCheck;
+        sudoCheck.start(QStringLiteral("sudo"), {QStringLiteral("-n"), QStringLiteral("true")});
+        haveSudo = sudoCheck.waitForFinished(3000) && sudoCheck.exitCode() == 0;
+    }
+    if (!QFile::exists(tftpdBin) || (!haveRoot && !haveSudo)) {
+        QSKIP("in.tftpd not usable without root/passwordless sudo, skipping reverse-direction CLI interop test");
+    }
+
+    const quint16 port2 = 12461;
+    QTemporaryDir hpaDir;
+    QTemporaryDir aetherClientDir;
+    QVERIFY(hpaDir.isValid());
+    QVERIFY(aetherClientDir.isValid());
+    // in.tftpd chroots into this directory and its worker drops to an
+    // unprivileged user for every request, so it needs to be world
+    // read/write/execute (matches tests/run_server.sh's chmod 0777).
+    QVERIFY(QFile::setPermissions(hpaDir.path(), QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ExeOwner |
+                                                     QFileDevice::ReadGroup | QFileDevice::WriteGroup | QFileDevice::ExeGroup |
+                                                     QFileDevice::ReadOther | QFileDevice::WriteOther | QFileDevice::ExeOther));
+
+    QByteArray downloadData2 = "Data served by tftp-hpa for the aethertftp CLI to download!";
+    QFile dFile2(hpaDir.filePath(QStringLiteral("hpa_down.txt")));
+    QVERIFY(dFile2.open(QIODevice::WriteOnly));
+    dFile2.write(downloadData2);
+    dFile2.close();
+
+    QStringList tftpdArgs{QStringLiteral("-L"), QStringLiteral("-c"), QStringLiteral("--secure"),
+                          hpaDir.path(),        QStringLiteral("-a"), QStringLiteral("127.0.0.1:") + QString::number(port2)};
+    QProcess tftpdProcess;
+    if (haveRoot) {
+        tftpdProcess.start(tftpdBin, tftpdArgs);
+    } else {
+        tftpdProcess.start(QStringLiteral("sudo"), QStringList{QStringLiteral("-n"), tftpdBin} + tftpdArgs);
+    }
+    QVERIFY2(tftpdProcess.waitForStarted(3000), "in.tftpd failed to start");
+    QTest::qWait(500);
+    QVERIFY2(tftpdProcess.state() == QProcess::Running, "in.tftpd exited immediately");
+
+    QProcess aetherGet;
+    aetherGet.start(aetherBin, {QStringLiteral("--get"), QStringLiteral("--host"), QStringLiteral("127.0.0.1"), QStringLiteral("--port"),
+                                QString::number(port2), QStringLiteral("--file"), QStringLiteral("hpa_down.txt"),
+                                QStringLiteral("--output"), aetherClientDir.filePath(QStringLiteral("hpa_down.txt"))});
+    QVERIFY2(waitForProcess(aetherGet, 8000), "aethertftp --get from in.tftpd did not finish");
+    QCOMPARE(aetherGet.exitCode(), 0);
+
+    QFile downloadedFile2(aetherClientDir.filePath(QStringLiteral("hpa_down.txt")));
+    QVERIFY(downloadedFile2.open(QIODevice::ReadOnly));
+    QCOMPARE(downloadedFile2.readAll(), downloadData2);
+    downloadedFile2.close();
+
+    QByteArray uploadData2 = "Data uploaded by the aethertftp CLI to tftp-hpa!";
+    QFile uFile2(aetherClientDir.filePath(QStringLiteral("hpa_up.txt")));
+    QVERIFY(uFile2.open(QIODevice::WriteOnly));
+    uFile2.write(uploadData2);
+    uFile2.close();
+
+    QProcess aetherPut;
+    aetherPut.start(aetherBin, {QStringLiteral("--put"), QStringLiteral("--host"), QStringLiteral("127.0.0.1"), QStringLiteral("--port"),
+                                QString::number(port2), QStringLiteral("--file"), aetherClientDir.filePath(QStringLiteral("hpa_up.txt"))});
+    QVERIFY2(waitForProcess(aetherPut, 8000), "aethertftp --put to in.tftpd did not finish");
+    QCOMPARE(aetherPut.exitCode(), 0);
+
+    QFile uploadedFile2(hpaDir.filePath(QStringLiteral("hpa_up.txt")));
+    QVERIFY(uploadedFile2.open(QIODevice::ReadOnly));
+    QCOMPARE(uploadedFile2.readAll(), uploadData2);
+    uploadedFile2.close();
+
+    // Modern sudo forwards SIGTERM to the child it launched, so terminate()
+    // tears down in.tftpd whether it's the direct child or wrapped in sudo.
+    tftpdProcess.terminate();
+    waitForProcess(tftpdProcess, 3000);
+    if (tftpdProcess.state() != QProcess::NotRunning) {
+        if (haveRoot)
+            tftpdProcess.kill();
+        else
+            QProcess::execute(QStringLiteral("sudo"), {QStringLiteral("-n"), QStringLiteral("pkill"), QStringLiteral("-KILL"),
+                                                       QStringLiteral("-f"), QStringLiteral("in.tftpd.*") + QString::number(port2)});
+        waitForProcess(tftpdProcess, 3000);
+    }
 }
 
 void TFTPProtocolTest::testProxyDhcp() {

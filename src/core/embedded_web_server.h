@@ -30,7 +30,8 @@ private slots:
 
 private:
     void handleRequest(QTcpSocket *socket, const QString &method, const QString &path, const QByteArray &body);
-    static void sendResponse(QTcpSocket *socket, int statusCode, const QString &statusText, const QString &contentType, const QByteArray &body);
+    static void sendResponse(QTcpSocket *socket, int statusCode, const QString &statusText, const QString &contentType,
+                             const QByteArray &body);
     static QByteArray getEmbeddedHtmlPage();
 
     TftpServer *m_tftpServer = nullptr;

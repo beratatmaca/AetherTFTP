@@ -92,7 +92,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y \
             build-essential libgl1-mesa-dev cmake g++ \
-            qt6-base-dev tftp-hpa libsystemd-dev
+            qt6-base-dev tftp-hpa tftpd-hpa libsystemd-dev
 
       - name: Configure CMake
         env:
@@ -119,6 +119,19 @@ jobs:
           # TSAN — suppress known Qt false positives
           TSAN_OPTIONS: halt_on_error=1:second_deadlock_stack=1:suppressions=${{ github.workspace }}/.tsan_suppressions
         run: ctest --test-dir build --output-on-failure -C Debug
+
+      # in.tftpd (tftp-hpa's server) drops privileges via setuid/setgid on
+      # every request, which requires root — the non-root run above always
+      # skips that half of testCliInteropWithTftpHpa. GitHub runners have
+      # passwordless sudo, so re-run just that test as root here to exercise
+      # it too. -E preserves QT_QPA_PLATFORM / sanitizer env vars under sudo.
+      - name: Run tftp-hpa server-direction interop test (root)
+        env:
+          QT_QPA_PLATFORM: offscreen
+          ASAN_OPTIONS: detect_leaks=0:abort_on_error=1:strict_string_checks=1
+          UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
+          TSAN_OPTIONS: halt_on_error=1:second_deadlock_stack=1:suppressions=${{ github.workspace }}/.tsan_suppressions
+        run: sudo -E ./build/tftp_test testCliInteropWithTftpHpa
 
   # ─── Regression: window-size negotiation (dedicated slot) ─────────────────
   regression-window:
