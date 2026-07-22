@@ -1,6 +1,5 @@
 #include "cli/cli_runner.h"
 
-#include "core/qlog.h"
 #include "core/tftp_client.h"
 #include "core/tftp_protocol.h"
 #include "core/tftp_server.h"
@@ -178,10 +177,6 @@ int CliRunner::runServer(QCommandLineParser &parser, quint16 port) {
     }
     out() << "AetherTFTP server running on " << bindAddr << ":" << port << " (Ctrl+C to stop)\n";
     out().flush();
-
-    // Signal systemd service manager that we are up and accepting transfers.
-    // This transitions Type=notify units from start-pending to active.
-    tftp::notifyReady();
 
     // Run until interrupted.
     return QCoreApplication::exec();

@@ -117,12 +117,12 @@ int main(int argc, char *argv[]) {
         QString lang = settings.value(QStringLiteral("general/language"), QStringLiteral("system")).toString();
         if (lang != QStringLiteral("system")) {
             auto *translator = tftp::gui::MapTranslator::create(lang, &app);
-            app.installTranslator(translator);
+            QApplication::installTranslator(translator);
         } else {
             QString systemLang = QLocale::system().name().left(2);
             if (systemLang == QStringLiteral("de") || systemLang == QStringLiteral("tr") || systemLang == QStringLiteral("es")) {
                 auto *translator = tftp::gui::MapTranslator::create(systemLang, &app);
-                app.installTranslator(translator);
+                QApplication::installTranslator(translator);
             }
         }
 

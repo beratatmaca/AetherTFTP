@@ -3,11 +3,12 @@ name: AetherTFTP CI
 on:
   push:
     branches: [main]
+    tags: ["v*"]
   pull_request:
     branches: [main]
 
 permissions:
-  contents: read
+  contents: write
 
 # ---------------------------------------------------------------------------
 # Cancel any in-progress run for the same branch/PR so we don't waste minutes.
@@ -214,3 +215,10 @@ jobs:
         uses: codecov/test-results-action@v1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+
+  # ─── Release Pipeline ──────────────────────────────────────────────────────
+  release:
+    name: Release
+    needs: [format, docs, lint, unit-tests, regression-window, windows-build, coverage]
+    uses: ./.github/workflows/release.yml
+    secrets: inherit

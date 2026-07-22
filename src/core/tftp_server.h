@@ -8,7 +8,6 @@
 #include <QObject>
 
 class QUdpSocket;
-class QTimer;
 
 namespace tftp {
 
@@ -304,8 +303,6 @@ private:
     mutable qint64 m_transfersFailure = 0;
     mutable qint64 m_retransmissionCount = 0;
 
-    QTimer *m_watchdogTimer = nullptr;
-
     // ProxyDHCP Server
     PxeProxyDhcp *m_proxyDhcpServer = nullptr;
     bool m_proxyDhcpEnabled = false;
@@ -315,9 +312,6 @@ private:
     EmbeddedWebServer *m_webServer = nullptr;
     bool m_webDashboardEnabled = false;
     quint16 m_webDashboardPort = 8080;
-
-private slots:
-    void onWatchdogTimeout();
 };
 
 }  // namespace tftp

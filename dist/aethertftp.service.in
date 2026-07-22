@@ -5,10 +5,7 @@ After=network-online.target
 Wants=network-online.target
 
 [Service]
-# Type=notify means systemd waits for READY=1 from sd_notify() before
-# considering the service active.  Requires AETHER_HAVE_SYSTEMD at build time.
-# Change to Type=simple if building without libsystemd.
-Type=notify
+Type=simple
 
 User=nobody
 Group=nogroup
@@ -25,9 +22,6 @@ ExecStart=@CMAKE_INSTALL_FULL_BINDIR@/aethertftp \
 
 Restart=on-failure
 RestartSec=5s
-
-# Watchdog: restart if the process hangs for more than 60 s.
-WatchdogSec=60s
 
 # ---- Sandboxing ----
 # Reduce the attack surface exposed to an exploit.

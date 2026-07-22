@@ -39,10 +39,12 @@ apps:
       # on Wayland hosts where wayland-egl fails to load. See the launcher's
       # `if [[ -n "$XDG_RUNTIME_DIR" && -z "$DISABLE_WAYLAND" ]]` gate.
       DISABLE_WAYLAND: "1"
-      QT_QPA_PLATFORM: "xcb"
+      QT_QPA_PLATFORM: "wayland;xcb"
     plugs:
       - network
       - network-bind
+      - home
+      - removable-media
 
 parts:
   aethertftp:
@@ -56,7 +58,6 @@ parts:
       - qt6-base-dev
       - libgl1-mesa-dev
       - git
-      - libsystemd-dev
     stage-packages:
       - libqt6core6
       - libqt6network6
@@ -72,7 +73,6 @@ parts:
       - libharfbuzz0b
       - libmd4c0
       - libproxy1v5
-      - libsystemd0
     override-pull: |
       craftctl default
       base=$(tr -d '[:space:]' < VERSION)

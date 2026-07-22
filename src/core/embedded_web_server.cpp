@@ -59,7 +59,7 @@ void EmbeddedWebServer::onClientReadyRead() {
         return;
 
     QString method = requestLineTokens.at(0).toUpper();
-    QString path = requestLineTokens.at(1);
+    const QString &path = requestLineTokens.at(1);
 
     // Extract body if present
     int headerEnd = data.indexOf("\r\n\r\n");

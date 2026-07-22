@@ -3,7 +3,6 @@
 #include "core/embedded_web_server.h"
 #include "core/metrics_exporter.h"
 #include "core/pxe_proxy_dhcp.h"
-#include "core/qlog.h"
 #include "core/tftp_protocol.h"
 #include "core/tftp_session.h"
 
@@ -16,7 +15,6 @@
 #include <QRandomGenerator>
 #include <QStorageInfo>
 #include <QTextStream>
-#include <QTimer>
 #include <QUdpSocket>
 #include <algorithm>
 #include <cmath>
@@ -54,14 +52,6 @@ bool TftpServer::listen(const QHostAddress &address, quint16 port, const QString
 
     m_globalTimer.invalidate();
 
-#ifdef AETHER_HAVE_SYSTEMD
-    if (!m_watchdogTimer) {
-        m_watchdogTimer = new QTimer(this);
-        connect(m_watchdogTimer, &QTimer::timeout, this, &TftpServer::onWatchdogTimeout);
-    }
-    m_watchdogTimer->start(15000);
-#endif
-
     if (m_proxyDhcpEnabled) {
         if (!m_proxyDhcpServer) {
             m_proxyDhcpServer = new PxeProxyDhcp(this);
@@ -95,22 +85,12 @@ void TftpServer::close() {
         m_proxyDhcpServer->close();
     }
 
-#ifdef AETHER_HAVE_SYSTEMD
-    if (m_watchdogTimer) {
-        m_watchdogTimer->stop();
-    }
-#endif
-
     if (m_socket) {
         m_socket->close();
         m_socket->deleteLater();
         m_socket = nullptr;
     }
     m_sessions.clear();
-}
-
-void TftpServer::onWatchdogTimeout() {
-    tftp::notifyWatchdog();
 }
 
 bool TftpServer::isListening() const {

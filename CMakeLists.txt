@@ -47,25 +47,6 @@ endif()
 
 find_package(Qt6 REQUIRED COMPONENTS Core Network Widgets)
 
-# ---------------------------------------------------------------------------
-# Optional: native systemd journal integration (Linux only)
-# Enables sd_journal_send() structured log entries and sd_notify() readiness
-# signalling.  Requires libsystemd-dev on the build host.  Set
-# -DAETHER_USE_SYSTEMD=OFF to disable even when the library is present.
-# ---------------------------------------------------------------------------
-option(AETHER_USE_SYSTEMD "Use libsystemd for sd_journal / sd_notify" ON)
-if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND AETHER_USE_SYSTEMD)
-    find_package(PkgConfig QUIET)
-    if(PKG_CONFIG_FOUND)
-        pkg_check_modules(SYSTEMD QUIET IMPORTED_TARGET libsystemd)
-    endif()
-    if(TARGET PkgConfig::SYSTEMD)
-        message(STATUS "AetherTFTP: libsystemd found — enabling journald integration")
-    else()
-        message(STATUS "AetherTFTP: libsystemd not found — falling back to syslog")
-    endif()
-endif()
-
 # Prebuilt Qt 6 for macOS can emit a spurious link to Apple's long-removed AGL
 # framework (pulled in transitively via Qt6::Gui / WrapOpenGL), which breaks
 # linking on current macOS SDKs with: "ld: framework 'AGL' not found". We never
@@ -128,10 +109,6 @@ target_link_libraries(aether_core PUBLIC Qt6::Core Qt6::Network)
 target_include_directories(aether_core PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${CMAKE_BINARY_DIR}/generated)
-if(TARGET PkgConfig::SYSTEMD)
-    target_compile_definitions(aether_core PUBLIC AETHER_HAVE_SYSTEMD)
-    target_link_libraries(aether_core PUBLIC PkgConfig::SYSTEMD)
-endif()
 
 add_library(aether_cli STATIC
     src/cli/cli_runner.cpp
